@@ -42,7 +42,7 @@ find_package(catkin REQUIRED COMPONENTS
         camera_info_manager
         )
 
-find_package(ignition-math2 REQUIRED)
+find_package(ignition-math4 REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
