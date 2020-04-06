@@ -3,7 +3,6 @@
 #include "gazebo/common/Battery.hh"
 #include "gazebo/physics/physics.hh"
 #include "battery_discharge.hh"
-#include <kobuki_msgs/MotorPower.h>
 #include "std_msgs/Float64.h"
 #include "ROS_debugging.h"
 
@@ -86,8 +85,7 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
         ROS_GREEN_STREAM("ROS node is up");
     }
 
-    // Publish a topic for motor power and charge level
-    this->motor_power = this->rosNode->advertise<kobuki_msgs::MotorPower>("/mobile_base/commands/motor_power", 1);
+    // Publish a topic for charge level
     this->charge_state = this->rosNode->advertise<std_msgs::Float64>("/mobile_base/commands/charge_level", 1);
     this->charge_state_mwh = this->rosNode->advertise<std_msgs::Float64>("/mobile_base/commands/charge_level_mwh", 1);
 
@@ -213,12 +211,6 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr &_battery)
             gzdbg << "Out of juice at:" << this->sim_time_now << "\n";
         #endif
 
-        this->q = 0;
-        kobuki_msgs::MotorPower power_msg;
-        power_msg.state = power::OFF;
-        lock.lock();
-        this->motor_power.publish(power_msg);
-        lock.unlock();
     }
     else if (this->q >= this->c)
     {
