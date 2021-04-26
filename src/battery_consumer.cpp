@@ -87,10 +87,10 @@ bool BatteryConsumerPlugin::SetConsumerPowerLoad(brass_gazebo_battery::SetLoad::
     this->powerLoad = req.power_load;
     this->battery->SetPowerLoad(this->consumerId, this->powerLoad);
 
-    #ifdef BATTERY_CONSUMER_DEBUG
-        gzdbg << "Power load of consumer has changed from:" << load << ", to:" << this->powerLoad << "\n";
-    #endif
-    ROS_GREEN_STREAM("Power load of consumer has changed to: " << this->powerLoad);
+    // #ifdef BATTERY_CONSUMER_DEBUG
+    //     gzdbg << "Power load of consumer has changed from:" << load << ", to:" << this->powerLoad << "\n";
+    // #endif
+    // ROS_GREEN_STREAM("Power load of consumer has changed to: " << this->powerLoad);
 
     lock.unlock();
     res.result = true;
