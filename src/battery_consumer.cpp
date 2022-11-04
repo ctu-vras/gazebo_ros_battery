@@ -3,8 +3,6 @@
 #include "gazebo/physics/physics.hh"
 #include "ROS_debugging.h"
 
-#define BATTERY_CONSUMER_DEBUG
-
 using namespace gazebo;
 
 GZ_REGISTER_MODEL_PLUGIN(BatteryConsumerPlugin);

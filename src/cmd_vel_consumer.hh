@@ -1,24 +1,28 @@
-#ifndef BRASS_GAZEBO_BATTERY_BATTERY_CONSUMER_H
-#define BRASS_GAZEBO_BATTERY_BATTERY_CONSUMER_H
+#ifndef BRASS_GAZEBO_BATTERY_MOTOR_CONSUMER_H
+#define BRASS_GAZEBO_BATTERY_MOTOR_CONSUMER_H
+
+#include <thread>
+#include <boost/thread/mutex.hpp>
 
 #include "gazebo/common/Plugin.hh"
 #include "gazebo/common/CommonTypes.hh"
-#include <boost/thread/mutex.hpp>
-#include "brass_gazebo_battery/SetLoad.h"
 #include "ros/ros.h"
 #include "ros/subscribe_options.h"
 #include "ros/callback_queue.h"
+#include "geometry_msgs/Twist.h"
 
-// #define CONSUMER_DEBUG
+#include "brass_gazebo_battery/SetLoad.h"
+
+#define CMD_VEL_CONSUMER_DEBUG
 
 namespace gazebo
 {
-    class GAZEBO_VISIBLE BatteryConsumerPlugin : public ModelPlugin
+    class GAZEBO_VISIBLE CmdVelConsumerPlugin : public ModelPlugin
     {
     // Constructor
-    public: BatteryConsumerPlugin();
+    public: CmdVelConsumerPlugin();
 
-    public: ~BatteryConsumerPlugin();
+    public: ~CmdVelConsumerPlugin();
 
     // Inherited from ModelPlugin
     public: virtual void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
@@ -27,8 +31,11 @@ namespace gazebo
 
     public: virtual void Reset();
 
-    public: bool SetConsumerPowerLoad(brass_gazebo_battery::SetLoad::Request& req,
-                                      brass_gazebo_battery::SetLoad::Response& res);
+    public: void OnCmdVelMsg(const geometry_msgs::Twist::ConstPtr &_msg);
+    
+    private: void QueueThread();
+
+    private: double CalculatePower(const geometry_msgs::Twist::ConstPtr &_msg);
 
     // Connection to the World Update events.
     protected: event::ConnectionPtr updateConnection;
@@ -43,6 +50,10 @@ namespace gazebo
 
     protected: sdf::ElementPtr sdf;
 
+    // Consumer parameter
+    protected: double powerLoadRate;
+    protected: double consumerIdlePower;
+
     // Battery
     private: common::BatteryPtr battery;
 
@@ -54,12 +65,16 @@ namespace gazebo
     // This node is for ros communications
     protected: std::unique_ptr<ros::NodeHandle> rosNode;
 
-    protected: ros::ServiceServer set_power_load;
+    protected: ros::Subscriber cmd_vel_sub;
+    protected: ros::Publisher cmd_vel_power_pub;
 
     protected: boost::mutex lock;
-
+    
+    private: ros::CallbackQueue rosQueue;
+    
+    private: std::thread rosQueueThread;
     };
 
 }
 
-#endif //BRASS_GAZEBO_BATTERY_BATTERY_CONSUMER_H
+#endif

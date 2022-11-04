@@ -16,7 +16,7 @@
 #include "brass_gazebo_battery/SetCoef.h"
 #include "brass_gazebo_battery/SetChargingRate.h"
 
-#define BATTERY_DEBUG
+// #define BATTERY_DEBUG
 #define DBG_INTERVAL 5.0
 
 namespace gazebo

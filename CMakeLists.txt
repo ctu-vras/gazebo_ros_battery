@@ -106,7 +106,9 @@ add_service_files(
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
 DEPENDENCIES
-std_msgs  # Or other packages containing msgs
+std_msgs
+geometry_msgs
+sensor_msgs  # Or other packages containing msgs
 )
 
 
@@ -169,6 +171,13 @@ add_library(battery_consumer SHARED src/battery_consumer.cpp src/ROS_debugging.h
 add_dependencies(battery_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(battery_consumer ${GAZEBO_LIBRARIES} ${Boost_LIBRARIES} ${IGNITION-MATH_LIBRARIES})
 
+add_library(cmd_vel_consumer SHARED src/cmd_vel_consumer.cpp src/ROS_debugging.h)
+add_dependencies(cmd_vel_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(cmd_vel_consumer ${GAZEBO_LIBRARIES} ${Boost_LIBRARIES} ${IGNITION-MATH_LIBRARIES})
+
+add_library(motor_consumer SHARED src/motor_consumer.cpp src/ROS_debugging.h)
+add_dependencies(motor_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(motor_consumer ${GAZEBO_LIBRARIES} ${Boost_LIBRARIES} ${IGNITION-MATH_LIBRARIES})
 
 ## Declare a C++ library
 #add_library(${PROJECT_NAME} SHARED src/battery_discharge.cpp src/battery_discharge.hh src/battery_consumer.cpp src/battery_consumer.hh)
@@ -223,6 +232,7 @@ target_link_libraries(battery_consumer ${GAZEBO_LIBRARIES} ${Boost_LIBRARIES} ${
 install(TARGETS
         battery_discharge
         battery_consumer
+        cmd_vel_consumer
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         )
