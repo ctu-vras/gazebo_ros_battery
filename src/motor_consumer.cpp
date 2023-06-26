@@ -10,7 +10,6 @@
 #include "gazebo/common/Battery.hh"
 #include "gazebo/physics/physics.hh"
 
-#include "ROS_debugging.h"
 #include "motor_consumer.hh"
 
 
@@ -32,15 +31,11 @@ MotorConsumerPlugin::~MotorConsumerPlugin()
 
 void MotorConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
-    #ifdef MOTOR_CONSUMER_DEBUG
-        gzdbg << "started loading motor consumer \n";
-    #endif
-
-    // check if the ros is up!
-    if (!ros::isInitialized()){
-        int argc = 0;
-        char **argv = NULL;
-        ros::init(argc, argv, _sdf->Get<std::string>("ros_node"), ros::init_options::NoSigintHandler);
+    if (!ros::isInitialized()) {
+        ROS_FATAL_STREAM_NAMED("motor_consumer", "A ROS node for Gazebo has not been initialized, "
+            "unable to load plugin. Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the "
+            "gazebo_ros package.");
+        return;
     }
 
     this->model = _model;
@@ -71,28 +66,17 @@ void MotorConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->joint_state_sub = this->rosNode->subscribe(so);
     this->rosQueueThread = std::thread(std::bind(&MotorConsumerPlugin::QueueThread, this));
 
-    #ifdef MOTOR_CONSUMER_DEBUG
-        gzdbg << "motor consumer loaded \n";
-    #endif
-
-    ROS_GREEN_STREAM("motor consumer loaded");
-
+    gzlog << "motor consumer loaded\n";
 }
 
 void MotorConsumerPlugin::Init()
 {
-#ifdef MOTOR_CONSUMER_DEBUG
-    gzdbg << "motor_consumer is initialized \n";
-#endif
-    ROS_GREEN_STREAM("motor_consumer is initialized");
+    gzlog << "motor_consumer is initialized\n";
 }
 
 void MotorConsumerPlugin::Reset()
 {
-#ifdef MOTOR_CONSUMER_DEBUG
-    gzdbg << "motor_consumer is reset \n";
-#endif
-    ROS_GREEN_STREAM("motor_consumer is reset");
+    gzlog << "motor_consumer is reset\n";
 }
 
 double MotorConsumerPlugin::CalculatePower(const sensor_msgs::JointState::ConstPtr &_msg)
@@ -105,7 +89,7 @@ double MotorConsumerPlugin::CalculatePower(const sensor_msgs::JointState::ConstP
     #ifdef MOTOR_CONSUMER_DEBUG
         gzdbg << "motor_consumer:: "
         << n
-        << " wheels found. Wheel velocity:"
+        << " joints found. Joint velocity:"
         << wheelVel
         << "\n";
     #endif

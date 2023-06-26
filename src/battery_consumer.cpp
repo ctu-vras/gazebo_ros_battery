@@ -1,7 +1,6 @@
 #include "battery_consumer.hh"
 #include "gazebo/common/Battery.hh"
 #include "gazebo/physics/physics.hh"
-#include "ROS_debugging.h"
 
 using namespace gazebo;
 
@@ -20,17 +19,11 @@ BatteryConsumerPlugin::~BatteryConsumerPlugin()
 void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
     // TODO: checking whether these elements exists
-
-
-    #ifdef CONSUMER_DEBUG
-        gzdbg << "started loading consumer \n";
-    #endif
-
-    // check if the ros is up!
-    if (!ros::isInitialized()){
-        int argc = 0;
-        char **argv = NULL;
-        ros::init(argc, argv, _sdf->Get<std::string>("ros_node"), ros::init_options::NoSigintHandler);
+    if (!ros::isInitialized()) {
+        ROS_FATAL_STREAM_NAMED("battery_consumer", "A ROS node for Gazebo has not been initialized, "
+            "unable to load plugin. Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the "
+            "gazebo_ros package.");
+        return;
     }
 
     this->model = _model;
@@ -53,28 +46,18 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
     this->set_power_load = this->rosNode->advertiseService(this->model->GetName() + "/set_power_load", &BatteryConsumerPlugin::SetConsumerPowerLoad, this);
 
-    #ifdef CONSUMER_DEBUG
-        gzdbg << "consumer loaded \n";
-    #endif
-
-    ROS_GREEN_STREAM("Consumer loaded");
+    gzlog << "consumer loaded\n";
 
 }
 
 void BatteryConsumerPlugin::Init()
 {
-#ifdef CONSUMER_DEBUG
-    gzdbg << "consumer is initialized \n";
-#endif
-    ROS_GREEN_STREAM("Consumer is initialized");
+    gzlog << "consumer is initialized\n";
 }
 
 void BatteryConsumerPlugin::Reset()
 {
-#ifdef CONSUMER_DEBUG
-    gzdbg << "consumer is reset \n";
-#endif
-    ROS_GREEN_STREAM("Consumer is reset");
+    gzlog << "consumer is reset\n";
 }
 
 bool BatteryConsumerPlugin::SetConsumerPowerLoad(gazebo_ros_linear_battery::SetLoad::Request &req,
@@ -85,10 +68,7 @@ bool BatteryConsumerPlugin::SetConsumerPowerLoad(gazebo_ros_linear_battery::SetL
     this->powerLoad = req.power_load;
     this->battery->SetPowerLoad(this->consumerId, this->powerLoad);
 
-    // #ifdef BATTERY_CONSUMER_DEBUG
-    //     gzdbg << "Power load of consumer has changed from:" << load << ", to:" << this->powerLoad << "\n";
-    // #endif
-    // ROS_GREEN_STREAM("Power load of consumer has changed to: " << this->powerLoad);
+    // gzlog << "Power load of consumer has changed from:" << load << ", to:" << this->powerLoad << "\n";
 
     lock.unlock();
     res.result = true;

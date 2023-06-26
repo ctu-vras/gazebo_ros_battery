@@ -4,7 +4,6 @@
 #include "gazebo/physics/physics.hh"
 #include "battery_discharge.hh"
 #include "std_msgs/Float64.h"
-#include "ROS_debugging.h"
 
 
 enum power{
@@ -38,52 +37,31 @@ BatteryPlugin::BatteryPlugin()
     this->iraw = 0.0;
     this->ismooth = 0.0;
 
-    #ifdef BATTERY_DEBUG
-        gzdbg << "Constructed BatteryPlugin and initialized parameters. \n";
-    #endif
-
-    ROS_INFO_STREAM("BRASS CP1 battery is constructed.");
+    gzlog << "Constructed BatteryPlugin and initialized parameters.\n";
 }
 
 BatteryPlugin::~BatteryPlugin()
 {
-    #ifdef BATTERY_DEBUG
-        gzdbg << "Destructing BatteryPlugin and removing the ros node. \n";
-    #endif
+    gzdbg << "Destructing BatteryPlugin and removing the ros node.\n";
     this->rosNode->shutdown();
 }
 
 void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
-    #ifdef BATTERY_DEBUG
-        gzdbg << "Loading the BatteryPlugin \n";
-    #endif
-
-    // check if the ros is up!
-    if (!ros::isInitialized()){
-        ROS_INFO_STREAM("Initializing ROS...");
-        int argc = 0;
-        char **argv = NULL;
-        ros::init(argc, argv, _sdf->Get<std::string>("ros_node"), ros::init_options::NoSigintHandler);
+    if (!ros::isInitialized()) {
+        ROS_FATAL_STREAM_NAMED("gazebo_ros_linear_battery", "A ROS node for Gazebo has not been initialized, "
+            "unable to load plugin. Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the "
+            "gazebo_ros package.");
+        return;
     }
 
     this->model = _model;
     this->world = _model->GetWorld();
 
-    #if GAZEBO_MAJOR_VERSION >= 9
-      this->sim_time_now = this->world->SimTime().Double();
-    #else
-      this->sim_time_now = this->world->GetSimTime().Double();
-    #endif
-
-
+    this->sim_time_now = this->world->SimTime().Double();
 
     // Create ros node and publish stuff there!
     this->rosNode.reset(new ros::NodeHandle(_sdf->Get<std::string>("ros_node")));
-    if (this->rosNode->ok())
-    {
-        ROS_GREEN_STREAM("ROS node is up");
-    }
 
     // Publish a topic for charge level
     this->charge_state = this->rosNode->advertise<std_msgs::Float64>("/mobile_base/commands/charge_level", 1);
@@ -110,35 +88,24 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     if (this->link->BatteryCount() > 0) {
         // Creates the battery
         this->battery = this->link->Battery(batteryName);
-        ROS_GREEN_STREAM("Created a battery");
+        gzlog << "Created battery" << batteryName << ".\n";
     }
     else
     {
-        ROS_RED_STREAM("There is no battery specification in the link");
+        gzerr << "There is no battery specification in the link!\n";
+        return;
     };
-
 
     // Specifying a custom update function
     this->battery->SetUpdateFunc(std::bind(&BatteryPlugin::OnUpdateVoltage, this, std::placeholders::_1));
 
-    #if GAZEBO_MAJOR_VERSION >= 9
-      this->sim_time_now = this->world->SimTime().Double();
-    #else
-      this->sim_time_now = this->world->GetSimTime().Double();
-    #endif
+    this->sim_time_now = this->world->SimTime().Double();
 
-    #ifdef BATTERY_DEBUG
-        gzdbg << "Loaded the BatteryPlugin at time:" << this->sim_time_now << "\n";
-    #endif
-
-    ROS_GREEN_STREAM("Plugin is fully loaded.");
+    gzlog << "BatteryPlugin Loaded.\n";
 }
 
-// This is for in initialization purposes and is called once after Load
-// So explanation about Gazebo Init are here: http://playerstage.sourceforge.net/doc/Gazebo-manual-0.5-html/plugin_models.html
 void BatteryPlugin::Init()
 {
-    ROS_GREEN_STREAM("Init Battery");
     this->q = this->q0;
     this->charging = false;
 }
@@ -152,11 +119,7 @@ void BatteryPlugin::Reset()
 
 double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr &_battery)
 {
-    #if GAZEBO_MAJOR_VERSION >= 9
-      double dt = this->world->Physics()->GetMaxStepSize();
-    #else
-      double dt = this->world->GetPhysicsEngine()->GetMaxStepSize();
-    #endif
+    double dt = this->world->Physics()->GetMaxStepSize();
 
     double totalpower = 0.0;
     double k = dt / this->tau;
@@ -181,16 +144,11 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr &_battery)
         this->q = this->q + GZ_SEC_TO_HOUR(dt * this->qt);
     }
 
-    #if GAZEBO_MAJOR_VERSION >= 9
-      this->sim_time_now = this->world->SimTime().Double();
-    #else
-      this->sim_time_now = this->world->GetSimTime().Double();
-    #endif
+    this->sim_time_now = this->world->SimTime().Double();
 
     #ifdef BATTERY_DEBUG
         gzdbg << "Current charge:" << this->q << ", at:" << this->sim_time_now << "\n";
     #endif
-    //    ROS_INFO_STREAM(this->q);
 
     this->et = this->e0 + this->e1 * (1 - this->q / this->c) - this->r * this->ismooth;
 
@@ -201,11 +159,9 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr &_battery)
     //Turn off the motor
     if (this->q <= 0)
     {
-        #if GAZEBO_MAJOR_VERSION >= 9
-          this->sim_time_now = this->world->SimTime().Double();
-        #else
-          this->sim_time_now = this->world->GetSimTime().Double();
-        #endif
+        this->sim_time_now = this->world->SimTime().Double();
+        
+        // TODO figure out how to turn off the robot
 
         #ifdef BATTERY_DEBUG
             gzdbg << "Out of juice at:" << this->sim_time_now << "\n";
@@ -235,16 +191,11 @@ bool BatteryPlugin::SetCharging(gazebo_ros_linear_battery::SetCharging::Request&
     lock.lock();
     this->charging = req.charging;
     if (this->charging) {
-        #ifdef BATTERY_DEBUG
-                gzdbg << "Bot is charging" << "\n";
-        #endif
-        ROS_GREEN_STREAM("Bot is charging");
+        gzdbg << "Battery is charging.\n";
     }
-    else{
-        #ifdef BATTERY_DEBUG
-                gzdbg << "Bot disconnected from the charging station" << "\n";
-        #endif
-        ROS_GREEN_STREAM("Bot disconnected from the charging station");
+    else
+    {
+        gzdbg << "Battery stopped charging.\n";
     }
     lock.unlock();
     res.result = true;
@@ -256,10 +207,7 @@ bool BatteryPlugin::SetChargingRate(gazebo_ros_linear_battery::SetChargingRate::
 {
     lock.lock();
     this->qt = req.charge_rate;
-    #ifdef BATTERY_DEBUG
-            gzdbg << "Charging rate has been changed to: " << this->qt << "\n";
-    #endif
-    ROS_GREEN_STREAM("Charging rate has been changed to: " << this->qt);
+    gzdbg << "Charging rate has been changed to: " << this->qt << "\n";
     lock.unlock();
     res.result = true;
     return true;
@@ -272,15 +220,12 @@ bool BatteryPlugin::SetCharge(gazebo_ros_linear_battery::SetCharge::Request &req
     lock.lock();
     if (req.charge <= this->c){
         this->q = req.charge;
-        #ifdef BATTERY_DEBUG
-            gzdbg << "Received charge:" << this->q << "\n";
-        #endif
-        ROS_GREEN_STREAM("A new charge is set: " << this->q);
+        gzdbg << "Received charge:" << this->q << "\n";
     }
     else
     {
         this->q = this->c;
-        ROS_RED_STREAM("The charge cannot be higher than the capacity of the battery");
+        gzerr << "The charge cannot be higher than the capacity of the battery!\n";
     }
     lock.unlock();
     res.result = true;
@@ -293,10 +238,7 @@ bool BatteryPlugin::SetModelCoefficients(gazebo_ros_linear_battery::SetCoef::Req
     lock.lock();
     this->e0 = req.constant_coef;
     this->e1 = req.linear_coef;
-    #ifdef BATTERY_DEBUG
-        gzdbg << "Power model is changed, new coefficients (constant, linear):" << this->e0 << this->e1 << "\n";
-    #endif
-    ROS_GREEN_STREAM("Power model is changed, new coefficients (constant, linear):" << this->e0 << this->e1);
+    gzdbg << "Power model is changed, new coefficients (constant, linear):" << this->e0 << this->e1 << "\n";
     lock.unlock();
     res.result = true;
     return true;

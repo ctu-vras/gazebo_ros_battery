@@ -9,7 +9,6 @@
 #include "gazebo/common/Battery.hh"
 #include "gazebo/physics/physics.hh"
 
-#include "ROS_debugging.h"
 #include "cmd_vel_consumer.hh"
 
 
@@ -31,15 +30,11 @@ CmdVelConsumerPlugin::~CmdVelConsumerPlugin()
 
 void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
-    #ifdef CMD_VEL_CONSUMER_DEBUG
-        gzdbg << "started loading cmd_vel consumer \n";
-    #endif
-
-    // check if the ros is up!
-    if (!ros::isInitialized()){
-        int argc = 0;
-        char **argv = NULL;
-        ros::init(argc, argv, _sdf->Get<std::string>("ros_node"), ros::init_options::NoSigintHandler);
+    if (!ros::isInitialized()) {
+        ROS_FATAL_STREAM_NAMED("cmd_vel_consumer", "A ROS node for Gazebo has not been initialized, "
+            "unable to load plugin. Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the "
+            "gazebo_ros package.");
+        return;
     }
 
     this->model = _model;
@@ -71,28 +66,17 @@ void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->cmd_vel_sub = this->rosNode->subscribe(so);
     this->rosQueueThread = std::thread(std::bind(&CmdVelConsumerPlugin::QueueThread, this));
 
-    #ifdef CMD_VEL_CONSUMER_DEBUG
-        gzdbg << "cmd_vel consumer loaded \n";
-    #endif
-
-    ROS_GREEN_STREAM("cmd_vel consumer loaded");
-
+    gzlog << "cmd_vel consumer loaded\n";
 }
 
 void CmdVelConsumerPlugin::Init()
 {
-#ifdef CMD_VEL_CONSUMER_DEBUG
-    gzdbg << "cmd_vel_consumer is initialized \n";
-#endif
-    ROS_GREEN_STREAM("cmd_vel_consumer is initialized");
+    gzlog << "cmd_vel_consumer is initialized\n";
 }
 
 void CmdVelConsumerPlugin::Reset()
 {
-#ifdef CMD_VEL_CONSUMER_DEBUG
-    gzdbg << "cmd_vel_consumer is reset \n";
-#endif
-    ROS_GREEN_STREAM("cmd_vel_consumer is reset");
+    gzlog << "cmd_vel_consumer is reset\n";
 }
 
 double CmdVelConsumerPlugin::CalculatePower(const geometry_msgs::Twist::ConstPtr &_msg)
