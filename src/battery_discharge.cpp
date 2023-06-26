@@ -229,8 +229,8 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr &_battery)
     return et;
 }
 
-bool BatteryPlugin::SetCharging(brass_gazebo_battery::SetCharging::Request& req,
-                                brass_gazebo_battery::SetCharging::Response& res)
+bool BatteryPlugin::SetCharging(gazebo_ros_linear_battery::SetCharging::Request& req,
+                                gazebo_ros_linear_battery::SetCharging::Response& res)
 {
     lock.lock();
     this->charging = req.charging;
@@ -251,8 +251,8 @@ bool BatteryPlugin::SetCharging(brass_gazebo_battery::SetCharging::Request& req,
     return true;
 }
 
-bool BatteryPlugin::SetChargingRate(brass_gazebo_battery::SetChargingRate::Request& req,
-                                brass_gazebo_battery::SetChargingRate::Response& res)
+bool BatteryPlugin::SetChargingRate(gazebo_ros_linear_battery::SetChargingRate::Request& req,
+                                gazebo_ros_linear_battery::SetChargingRate::Response& res)
 {
     lock.lock();
     this->qt = req.charge_rate;
@@ -266,8 +266,8 @@ bool BatteryPlugin::SetChargingRate(brass_gazebo_battery::SetChargingRate::Reque
 }
 
 
-bool BatteryPlugin::SetCharge(brass_gazebo_battery::SetCharge::Request &req,
-                              brass_gazebo_battery::SetCharge::Response &res)
+bool BatteryPlugin::SetCharge(gazebo_ros_linear_battery::SetCharge::Request &req,
+                              gazebo_ros_linear_battery::SetCharge::Response &res)
 {
     lock.lock();
     if (req.charge <= this->c){
@@ -287,8 +287,8 @@ bool BatteryPlugin::SetCharge(brass_gazebo_battery::SetCharge::Request &req,
     return true;
 }
 
-bool BatteryPlugin::SetModelCoefficients(brass_gazebo_battery::SetCoef::Request &req,
-                                         brass_gazebo_battery::SetCoef::Response &res)
+bool BatteryPlugin::SetModelCoefficients(gazebo_ros_linear_battery::SetCoef::Request &req,
+                                         gazebo_ros_linear_battery::SetCoef::Response &res)
 {
     lock.lock();
     this->e0 = req.constant_coef;

@@ -1,5 +1,5 @@
-#ifndef BRASS_GAZEBO_BATTERY_BATTERY_DISCHARGE_H
-#define BRASS_GAZEBO_BATTERY_BATTERY_DISCHARGE_H
+#ifndef gazebo_ros_linear_battery_BATTERY_DISCHARGE_H
+#define gazebo_ros_linear_battery_BATTERY_DISCHARGE_H
 
 #include <map>
 #include <string>
@@ -11,10 +11,10 @@
 #include "ros/callback_queue.h"
 #include <boost/thread/mutex.hpp>
 #include "std_msgs/Bool.h"
-#include "brass_gazebo_battery/SetCharge.h"
-#include "brass_gazebo_battery/SetCharging.h"
-#include "brass_gazebo_battery/SetCoef.h"
-#include "brass_gazebo_battery/SetChargingRate.h"
+#include "gazebo_ros_linear_battery/SetCharge.h"
+#include "gazebo_ros_linear_battery/SetCharging.h"
+#include "gazebo_ros_linear_battery/SetCoef.h"
+#include "gazebo_ros_linear_battery/SetChargingRate.h"
 
 // #define BATTERY_DEBUG
 #define DBG_INTERVAL 5.0
@@ -38,17 +38,17 @@ namespace gazebo
 
     private: double OnUpdateVoltage(const common::BatteryPtr &_battery);
 
-    public: bool SetCharging(brass_gazebo_battery::SetCharging::Request& req,
-                             brass_gazebo_battery::SetCharging::Response& res);
+    public: bool SetCharging(gazebo_ros_linear_battery::SetCharging::Request& req,
+                             gazebo_ros_linear_battery::SetCharging::Response& res);
 
-    public: bool SetCharge(brass_gazebo_battery::SetCharge::Request& req,
-                             brass_gazebo_battery::SetCharge::Response& res);
+    public: bool SetCharge(gazebo_ros_linear_battery::SetCharge::Request& req,
+                             gazebo_ros_linear_battery::SetCharge::Response& res);
 
-    public: bool SetModelCoefficients(brass_gazebo_battery::SetCoef::Request& req,
-                                      brass_gazebo_battery::SetCoef::Response& res);
+    public: bool SetModelCoefficients(gazebo_ros_linear_battery::SetCoef::Request& req,
+                                      gazebo_ros_linear_battery::SetCoef::Response& res);
 
-    public: bool SetChargingRate(brass_gazebo_battery::SetChargingRate::Request& req,
-                                 brass_gazebo_battery::SetChargingRate::Response& res);
+    public: bool SetChargingRate(gazebo_ros_linear_battery::SetChargingRate::Request& req,
+                                 gazebo_ros_linear_battery::SetChargingRate::Response& res);
 
     // Connection to the World Update events.
     protected: event::ConnectionPtr updateConnection;
@@ -117,4 +117,4 @@ namespace gazebo
     };
 }
 
-#endif //BRASS_GAZEBO_BATTERY_BATTERY_DISCHARGE_H
+#endif //gazebo_ros_linear_battery_BATTERY_DISCHARGE_H

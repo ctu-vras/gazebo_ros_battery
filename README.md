@@ -10,8 +10,8 @@ This plugin is tested for ROS kinetic and Gazebo 7.8.1.
 # Build
 Create the build directory:
 ```bash
-mkdir ~/catkin_ws/src/brass_gazebo_battery/build
-cd ~/catkin_ws/src/brass_gazebo_battery/build
+mkdir ~/catkin_ws/src/gazebo_ros_linear_battery/build
+cd ~/catkin_ws/src/gazebo_ros_linear_battery/build
 ```
 
 Make sure you have sourced ROS before compiling the code:
@@ -25,11 +25,11 @@ cmake ../
 make    
 ```
 
-Compiling will result in a shared library, `~/catkin_ws/src/brass_gazebo_battery/build/devel/lib/libbattery_discharge.so`, that can be inserted in a Gazebo simulation.
+Compiling will result in a shared library, `~/catkin_ws/src/gazebo_ros_linear_battery/build/devel/lib/libbattery_discharge.so`, that can be inserted in a Gazebo simulation.
 
 Lastly, add your library path to the `GAZEBO_PLUGIN_PATH`:
 ```bash
-export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:~/catkin_ws/src/brass_gazebo_battery/build/devel/lib
+export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:~/catkin_ws/src/gazebo_ros_linear_battery/build/devel/lib
 ```
 
 # Build by catkin
@@ -41,7 +41,7 @@ catkin_make
 
 # Installing the Plugin
 ```bash
-cd ~/catkin_ws/src/brass_gazebo_battery/build
+cd ~/catkin_ws/src/gazebo_ros_linear_battery/build
 cmake ../
 make
 sudo make install
@@ -83,7 +83,7 @@ The xml code could be linked to any model in a new `.world` file.
 
 # Run the Plugin
 ```bash
-cd ~/catkin_ws/src/brass_gazebo_battery/
+cd ~/catkin_ws/src/gazebo_ros_linear_battery/
 gazebo test/worlds/p2-cp1.world --verbose
 ```
 
@@ -127,17 +127,17 @@ catkin_make
 The header files associated to the service can be found here:
 
 ```bash
-cd ~/catkin_ws/devel/include/brass_gazebo_battery
+cd ~/catkin_ws/devel/include/gazebo_ros_linear_battery
 ```
 The add the following header into the code that want to use the services:
 
 ```cpp
-#include "brass_gazebo_battery/SetLoad.h"
+#include "gazebo_ros_linear_battery/SetLoad.h"
 ```
 And then add the following declaration:
 
 ```cpp
-public: bool ServiceName(brass_gazebo_battery::SetLoad::Request& req, brass_gazebo_battery::SetLoad::Response& res);
+public: bool ServiceName(gazebo_ros_linear_battery::SetLoad::Request& req, gazebo_ros_linear_battery::SetLoad::Response& res);
 ```
 The service can then be advertised as follows:
 

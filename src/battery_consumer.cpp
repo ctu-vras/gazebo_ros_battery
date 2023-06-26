@@ -77,8 +77,8 @@ void BatteryConsumerPlugin::Reset()
     ROS_GREEN_STREAM("Consumer is reset");
 }
 
-bool BatteryConsumerPlugin::SetConsumerPowerLoad(brass_gazebo_battery::SetLoad::Request &req,
-                                                 brass_gazebo_battery::SetLoad::Response &res)
+bool BatteryConsumerPlugin::SetConsumerPowerLoad(gazebo_ros_linear_battery::SetLoad::Request &req,
+                                                 gazebo_ros_linear_battery::SetLoad::Response &res)
 {
     lock.lock();
     double load = this->powerLoad;

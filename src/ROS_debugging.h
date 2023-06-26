@@ -2,8 +2,8 @@
 // Created by pjamshidi on 2/4/18.
 //
 
-#ifndef BRASS_GAZEBO_BATTERY_ROS_DEBUGGING_H
-#define BRASS_GAZEBO_BATTERY_ROS_DEBUGGING_H
+#ifndef gazebo_ros_linear_battery_ROS_DEBUGGING_H
+#define gazebo_ros_linear_battery_ROS_DEBUGGING_H
 
 
 // Defining customized ROS stream color
@@ -60,4 +60,4 @@ namespace pc
 
 
 
-#endif //BRASS_GAZEBO_BATTERY_ROS_DEBUGGING_H
+#endif //gazebo_ros_linear_battery_ROS_DEBUGGING_H

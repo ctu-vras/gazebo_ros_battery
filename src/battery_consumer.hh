@@ -1,10 +1,10 @@
-#ifndef BRASS_GAZEBO_BATTERY_BATTERY_CONSUMER_H
-#define BRASS_GAZEBO_BATTERY_BATTERY_CONSUMER_H
+#ifndef gazebo_ros_linear_battery_BATTERY_CONSUMER_H
+#define gazebo_ros_linear_battery_BATTERY_CONSUMER_H
 
 #include "gazebo/common/Plugin.hh"
 #include "gazebo/common/CommonTypes.hh"
 #include <boost/thread/mutex.hpp>
-#include "brass_gazebo_battery/SetLoad.h"
+#include "gazebo_ros_linear_battery/SetLoad.h"
 #include "ros/ros.h"
 #include "ros/subscribe_options.h"
 #include "ros/callback_queue.h"
@@ -27,8 +27,8 @@ namespace gazebo
 
     public: virtual void Reset();
 
-    public: bool SetConsumerPowerLoad(brass_gazebo_battery::SetLoad::Request& req,
-                                      brass_gazebo_battery::SetLoad::Response& res);
+    public: bool SetConsumerPowerLoad(gazebo_ros_linear_battery::SetLoad::Request& req,
+                                      gazebo_ros_linear_battery::SetLoad::Response& res);
 
     // Connection to the World Update events.
     protected: event::ConnectionPtr updateConnection;
@@ -62,4 +62,4 @@ namespace gazebo
 
 }
 
-#endif //BRASS_GAZEBO_BATTERY_BATTERY_CONSUMER_H
+#endif //gazebo_ros_linear_battery_BATTERY_CONSUMER_H

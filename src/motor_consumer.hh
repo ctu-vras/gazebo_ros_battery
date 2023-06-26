@@ -1,5 +1,5 @@
-#ifndef BRASS_GAZEBO_BATTERY_MOTOR_CONSUMER_H
-#define BRASS_GAZEBO_BATTERY_MOTOR_CONSUMER_H
+#ifndef gazebo_ros_linear_battery_MOTOR_CONSUMER_H
+#define gazebo_ros_linear_battery_MOTOR_CONSUMER_H
 
 #include <thread>
 #include <boost/thread/mutex.hpp>
@@ -11,7 +11,7 @@
 #include "ros/callback_queue.h"
 #include "sensor_msgs/JointState.h"
 
-#include "brass_gazebo_battery/SetLoad.h"
+#include "gazebo_ros_linear_battery/SetLoad.h"
 
 #define MOTOR_CONSUMER_DEBUG
 
