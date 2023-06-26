@@ -1,3 +1,11 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: pooyanjamshidi, marioney, tmxkn1
+// SPDX-FileCopyrightText: Czech Technical University in Prague
+//
+// Original file from https://github.com/tmxkn1/brass_gazebo_battery edited by Martin Pecka:
+// - renamed to gazebo_ros_linear_battery
+// - cleaned up the code
+
 #include <thread>
 #include <math.h>
 
