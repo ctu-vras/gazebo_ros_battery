@@ -10,6 +10,8 @@
 #include "gazebo/common/Battery.hh"
 #include "gazebo/physics/physics.hh"
 
+// #define CONSUMER_DEBUG
+
 using namespace gazebo;
 
 GZ_REGISTER_MODEL_PLUGIN(BatteryConsumerPlugin);
@@ -20,17 +22,18 @@ BatteryConsumerPlugin::BatteryConsumerPlugin() : consumerId(-1)
 
 BatteryConsumerPlugin::~BatteryConsumerPlugin()
 {
-    if (this->battery && this->consumerId !=-1)
+    if (this->battery && this->consumerId != -1)
         this->battery->RemoveConsumer(this->consumerId);
 }
 
 void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
     // TODO: checking whether these elements exists
-    if (!ros::isInitialized()) {
+    if (!ros::isInitialized())
+    {
         ROS_FATAL_STREAM_NAMED("battery_consumer", "A ROS node for Gazebo has not been initialized, "
-            "unable to load plugin. Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the "
-            "gazebo_ros package.");
+                                                   "unable to load plugin. Load the Gazebo system plugin "
+                                                   "'libgazebo_ros_api_plugin.so' in the gazebo_ros package.");
         return;
     }
 
@@ -52,7 +55,8 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     // Create ros node and publish stuff there!
     this->rosNode.reset(new ros::NodeHandle(_sdf->Get<std::string>("ros_node")));
 
-    this->set_power_load = this->rosNode->advertiseService(this->model->GetName() + "/set_power_load", &BatteryConsumerPlugin::SetConsumerPowerLoad, this);
+    this->set_power_load = this->rosNode->advertiseService(
+        this->model->GetName() + "/set_power_load", &BatteryConsumerPlugin::SetConsumerPowerLoad, this);
 
     gzlog << "consumer loaded\n";
 
@@ -68,8 +72,8 @@ void BatteryConsumerPlugin::Reset()
     gzlog << "consumer is reset\n";
 }
 
-bool BatteryConsumerPlugin::SetConsumerPowerLoad(gazebo_ros_battery::SetLoad::Request &req,
-                                                 gazebo_ros_battery::SetLoad::Response &res)
+bool BatteryConsumerPlugin::SetConsumerPowerLoad(gazebo_ros_battery::SetLoad::Request& req,
+                                                 gazebo_ros_battery::SetLoad::Response& res)
 {
     lock.lock();
     double load = this->powerLoad;

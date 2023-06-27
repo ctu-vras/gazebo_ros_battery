@@ -23,103 +23,95 @@
 #include "gazebo_ros_battery/SetCoef.h"
 #include "gazebo_ros_battery/SetChargingRate.h"
 
-// #define BATTERY_DEBUG
-#define DBG_INTERVAL 5.0
-
 namespace gazebo
 {
-    /// \brief A plugin that simulate BRASS CP1 battery model: discharge and charge according to power models
-    class GAZEBO_VISIBLE BatteryPlugin : public ModelPlugin
-    {
+
+/// \brief A plugin that simulate BRASS CP1 battery model: discharge and charge according to power models
+class GAZEBO_VISIBLE BatteryPlugin : public ModelPlugin
+{
     /// \brief Constructor
-    public: BatteryPlugin();
+public:
+    BatteryPlugin();
 
-    public: ~BatteryPlugin();
+    ~BatteryPlugin() override;
 
-    // Inherited.
-    public: virtual void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
+    void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) override;
 
-    public: virtual void Init();
+    void Init() override;
 
-    public: virtual void Reset();
+    void Reset() override;
 
-    private: double OnUpdateVoltage(const common::BatteryPtr &_battery);
+private:
+    double OnUpdateVoltage(const common::BatteryPtr& _battery);
 
-    public: bool SetCharging(gazebo_ros_battery::SetCharging::Request& req,
-                             gazebo_ros_battery::SetCharging::Response& res);
+public:
+    bool SetCharging(gazebo_ros_battery::SetCharging::Request& req,
+                     gazebo_ros_battery::SetCharging::Response& res);
 
-    public: bool SetCharge(gazebo_ros_battery::SetCharge::Request& req,
-                             gazebo_ros_battery::SetCharge::Response& res);
+    bool SetCharge(gazebo_ros_battery::SetCharge::Request& req,
+                   gazebo_ros_battery::SetCharge::Response& res);
 
-    public: bool SetModelCoefficients(gazebo_ros_battery::SetCoef::Request& req,
-                                      gazebo_ros_battery::SetCoef::Response& res);
+    bool SetModelCoefficients(gazebo_ros_battery::SetCoef::Request& req,
+                              gazebo_ros_battery::SetCoef::Response& res);
 
-    public: bool SetChargingRate(gazebo_ros_battery::SetChargingRate::Request& req,
-                                 gazebo_ros_battery::SetChargingRate::Response& res);
+    bool SetChargingRate(gazebo_ros_battery::SetChargingRate::Request& req,
+                         gazebo_ros_battery::SetChargingRate::Response& res);
 
-    // Connection to the World Update events.
-    protected: event::ConnectionPtr updateConnection;
-
-    protected: physics::WorldPtr world;
-
-    protected: physics::PhysicsEnginePtr physics;
-
-    protected: physics::ModelPtr model;
-
-    protected: physics::LinkPtr link;
-
-    protected: common::BatteryPtr battery;
-
-    protected: sdf::ElementPtr sdf;
-
+protected:
+    event::ConnectionPtr updateConnection;
+    physics::WorldPtr world;
+    physics::PhysicsEnginePtr physics;
+    physics::ModelPtr model;
+    physics::LinkPtr link;
+    common::BatteryPtr battery;
+    sdf::ElementPtr sdf;
 
     // E(t) = e0 + e1* Q(t)/c
-    protected: double et;
-    protected: double e0;
-    protected: double e1;
+    double et;
+    double e0;
+    double e1;
 
     // Initial battery charge in Ah.
-    protected: double q0;
+    double q0;
 
     // Charge rate in A
     // More description about charge rate: http://batteriesbyfisher.com/determining-charge-time
-    protected: double qt;
+    double qt;
 
     // Battery capacity in Ah.
-    protected: double c;
+    double c;
 
     // Battery inner resistance in Ohm
-    protected: double r;
+    double r;
 
     // Current low-pass filter characteristic time in seconds.
-    protected: double tau;
+    double tau;
 
     // Raw battery current in A.
-    protected: double iraw;
+    double iraw;
 
     // Smoothed battery current in A.
-    protected: double ismooth;
+    double ismooth;
 
     // Instantaneous battery charge in Ah.
-    protected: double q;
+    double q;
 
     // This node is for ros communications
-    protected: std::unique_ptr<ros::NodeHandle> rosNode;
+    std::unique_ptr<ros::NodeHandle> rosNode;
 
-    protected: ros::Publisher charge_state;
-    protected: ros::Publisher charge_state_mwh;
-    protected: ros::Publisher motor_power;
+    ros::Publisher charge_state;
+    ros::Publisher charge_state_mwh;
+    ros::Publisher motor_power;
 
-    protected: ros::ServiceServer set_charging;
-    protected: ros::ServiceServer set_charge;
-    protected: ros::ServiceServer set_coefficients;
-    protected: ros::ServiceServer set_charging_rate;
+    ros::ServiceServer set_charging;
+    ros::ServiceServer set_charge;
+    ros::ServiceServer set_coefficients;
+    ros::ServiceServer set_charging_rate;
 
-    protected: boost::mutex lock;
+    boost::mutex lock;
 
-    protected: bool charging;
+    bool charging;
 
-    protected: double sim_time_now;
-
-    };
+    double sim_time_now;
+};
 }

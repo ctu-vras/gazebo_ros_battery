@@ -16,55 +16,47 @@
 #include "ros/subscribe_options.h"
 #include "ros/callback_queue.h"
 
-// #define CONSUMER_DEBUG
-
 namespace gazebo
 {
-    class GAZEBO_VISIBLE BatteryConsumerPlugin : public ModelPlugin
-    {
+
+class GAZEBO_VISIBLE BatteryConsumerPlugin : public ModelPlugin
+{
     // Constructor
-    public: BatteryConsumerPlugin();
+public:
+    BatteryConsumerPlugin();
 
-    public: ~BatteryConsumerPlugin();
+    ~BatteryConsumerPlugin() override;
 
-    // Inherited from ModelPlugin
-    public: virtual void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
+    void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) override;
 
-    public: virtual void Init();
+    void Init() override;
 
-    public: virtual void Reset();
+    void Reset() override;
 
-    public: bool SetConsumerPowerLoad(gazebo_ros_battery::SetLoad::Request& req,
-                                      gazebo_ros_battery::SetLoad::Response& res);
+    bool SetConsumerPowerLoad(gazebo_ros_battery::SetLoad::Request& req,
+                              gazebo_ros_battery::SetLoad::Response& res);
 
-    // Connection to the World Update events.
-    protected: event::ConnectionPtr updateConnection;
+protected:
+    event::ConnectionPtr updateConnection;
+    physics::WorldPtr world;
+    physics::PhysicsEnginePtr physics;
+    physics::ModelPtr model;
+    physics::LinkPtr link;
+    sdf::ElementPtr sdf;
+    common::BatteryPtr battery;
 
-    protected: physics::WorldPtr world;
-
-    protected: physics::PhysicsEnginePtr physics;
-
-    protected: physics::ModelPtr model;
-
-    protected: physics::LinkPtr link;
-
-    protected: sdf::ElementPtr sdf;
-
-    // Battery
-    private: common::BatteryPtr battery;
-
+private:
     // Consumer identifier
-    private: int32_t consumerId;
+    int32_t consumerId;
 
-    protected: double powerLoad;
+protected:
+    double powerLoad;
 
     // This node is for ros communications
-    protected: std::unique_ptr<ros::NodeHandle> rosNode;
+    std::unique_ptr<ros::NodeHandle> rosNode;
 
-    protected: ros::ServiceServer set_power_load;
+    ros::ServiceServer set_power_load;
 
-    protected: boost::mutex lock;
-
-    };
-
+    boost::mutex lock;
+};
 }

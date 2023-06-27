@@ -20,7 +20,7 @@
 #include "cmd_vel_consumer.hh"
 
 
-#define CMD_VEL_CONSUMER_DEBUG
+// #define CMD_VEL_CONSUMER_DEBUG
 
 using namespace gazebo;
 
@@ -32,16 +32,17 @@ CmdVelConsumerPlugin::CmdVelConsumerPlugin() : consumerId(-1)
 
 CmdVelConsumerPlugin::~CmdVelConsumerPlugin()
 {
-    if (this->battery && this->consumerId !=-1)
+    if (this->battery && this->consumerId != -1)
         this->battery->RemoveConsumer(this->consumerId);
 }
 
 void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
-    if (!ros::isInitialized()) {
+    if (!ros::isInitialized())
+    {
         ROS_FATAL_STREAM_NAMED("cmd_vel_consumer", "A ROS node for Gazebo has not been initialized, "
-            "unable to load plugin. Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the "
-            "gazebo_ros package.");
+                                                   "unable to load plugin. Load the Gazebo system plugin "
+                                                   "'libgazebo_ros_api_plugin.so' in the gazebo_ros package.");
         return;
     }
 
@@ -59,13 +60,15 @@ void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->link = _model->GetLink(linkName);
     GZ_ASSERT(this->link, "Cannot find a link with the specified link_name.");
     this->battery = this->link->Battery(batteryName);
-    GZ_ASSERT(this->link, "Cannot find a battery in the link with the specified battery_name. Make sure the batter_name specified in the plugin can be found in the specified link.");
+    GZ_ASSERT(this->link, "Cannot find a battery in the link with the specified battery_name. Make sure the "
+                          "battery_name specified in the plugin can be found in the specified link.");
 
     this->consumerId = this->battery->AddConsumer();
     this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
 
     this->rosNode.reset(new ros::NodeHandle(_sdf->Get<std::string>("ros_node")));
-    this->cmd_vel_power_pub = this->rosNode->advertise<std_msgs::Float64>("/mobile_base/commands/consumer/cmd_vel_power", 1);
+    this->cmd_vel_power_pub = this->rosNode->advertise<std_msgs::Float64>(
+        "/mobile_base/commands/consumer/cmd_vel_power", 1);
     ros::SubscribeOptions so = ros::SubscribeOptions::create<geometry_msgs::Twist>(
         "/" + this->model->GetName() + cmdVelTopic,
         1,
@@ -87,29 +90,29 @@ void CmdVelConsumerPlugin::Reset()
     gzlog << "cmd_vel_consumer is reset\n";
 }
 
-double CmdVelConsumerPlugin::CalculatePower(const geometry_msgs::Twist::ConstPtr &_msg)
+double CmdVelConsumerPlugin::CalculatePower(const geometry_msgs::Twist::ConstPtr& _msg)
 {
     double linearSpeed = _msg->linear.x + _msg->linear.y + _msg->linear.z;
     double angularSpeed = _msg->angular.z;
     return 5;
 }
 
-void CmdVelConsumerPlugin::OnCmdVelMsg(const geometry_msgs::Twist::ConstPtr &_msg)
+void CmdVelConsumerPlugin::OnCmdVelMsg(const geometry_msgs::Twist::ConstPtr& _msg)
 {
-  double cmd_vel_power = CalculatePower(_msg);
-  this->battery->SetPowerLoad(this->consumerId, cmd_vel_power);
-  std_msgs::Float64 cmd_vel_power_msg;
-  cmd_vel_power_msg.data = cmd_vel_power;
-  lock.lock();
-  this->cmd_vel_power_pub.publish(cmd_vel_power_msg);
-  lock.unlock();
+    double cmd_vel_power = CalculatePower(_msg);
+    this->battery->SetPowerLoad(this->consumerId, cmd_vel_power);
+    std_msgs::Float64 cmd_vel_power_msg;
+    cmd_vel_power_msg.data = cmd_vel_power;
+    lock.lock();
+    this->cmd_vel_power_pub.publish(cmd_vel_power_msg);
+    lock.unlock();
 }
 
 void CmdVelConsumerPlugin::QueueThread()
 {
-  static const double timeout = 0.01;
-  while (this->rosNode->ok())
-  {
-    this->rosQueue.callAvailable(ros::WallDuration(timeout));
-  }
+    static const double timeout = 0.01;
+    while (this->rosNode->ok())
+    {
+        this->rosQueue.callAvailable(ros::WallDuration(timeout));
+    }
 }

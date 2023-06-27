@@ -20,66 +20,63 @@
 
 #include "gazebo_ros_battery/SetLoad.h"
 
-#define CMD_VEL_CONSUMER_DEBUG
-
 namespace gazebo
 {
-    class GAZEBO_VISIBLE CmdVelConsumerPlugin : public ModelPlugin
-    {
+class GAZEBO_VISIBLE CmdVelConsumerPlugin : public ModelPlugin
+{
+public:
     // Constructor
-    public: CmdVelConsumerPlugin();
+    CmdVelConsumerPlugin();
 
-    public: ~CmdVelConsumerPlugin();
+    ~CmdVelConsumerPlugin() override;
 
     // Inherited from ModelPlugin
-    public: virtual void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
+    void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) override;
 
-    public: virtual void Init();
+    void Init() override;
 
-    public: virtual void Reset();
+    void Reset() override;
 
-    public: void OnCmdVelMsg(const geometry_msgs::Twist::ConstPtr &_msg);
-    
-    private: void QueueThread();
+    void OnCmdVelMsg(const geometry_msgs::Twist::ConstPtr& _msg);
 
-    private: double CalculatePower(const geometry_msgs::Twist::ConstPtr &_msg);
+private:
+    void QueueThread();
+
+    double CalculatePower(const geometry_msgs::Twist::ConstPtr& _msg);
 
     // Connection to the World Update events.
-    protected: event::ConnectionPtr updateConnection;
-
-    protected: physics::WorldPtr world;
-
-    protected: physics::PhysicsEnginePtr physics;
-
-    protected: physics::ModelPtr model;
-
-    protected: physics::LinkPtr link;
-
-    protected: sdf::ElementPtr sdf;
+protected:
+    event::ConnectionPtr updateConnection;
+    physics::WorldPtr world;
+    physics::PhysicsEnginePtr physics;
+    physics::ModelPtr model;
+    physics::LinkPtr link;
+    sdf::ElementPtr sdf;
 
     // Consumer parameter
-    protected: double powerLoadRate;
-    protected: double consumerIdlePower;
+    double powerLoadRate;
+    double consumerIdlePower;
 
-    // Battery
-    private: common::BatteryPtr battery;
+private:
+    common::BatteryPtr battery;
 
     // Consumer identifier
-    private: int32_t consumerId;
+    int32_t consumerId;
 
-    protected: double powerLoad;
+protected:
+    double powerLoad;
 
     // This node is for ros communications
-    protected: std::unique_ptr<ros::NodeHandle> rosNode;
+    std::unique_ptr<ros::NodeHandle> rosNode;
 
-    protected: ros::Subscriber cmd_vel_sub;
-    protected: ros::Publisher cmd_vel_power_pub;
+    ros::Subscriber cmd_vel_sub;
+    ros::Publisher cmd_vel_power_pub;
 
-    protected: boost::mutex lock;
-    
-    private: ros::CallbackQueue rosQueue;
-    
-    private: std::thread rosQueueThread;
-    };
+    boost::mutex lock;
 
+private:
+    ros::CallbackQueue rosQueue;
+
+    std::thread rosQueueThread;
+};
 }
