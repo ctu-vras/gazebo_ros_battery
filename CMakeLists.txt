@@ -33,13 +33,13 @@ catkin_package(
 
 include_directories(${catkin_INCLUDE_DIRS})
 
-add_library(gazebo_ros_battery_discharge SHARED src/battery_discharge.cpp)
-add_dependencies(gazebo_ros_battery_discharge ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(gazebo_ros_battery_discharge ${catkin_LIBRARIES})
+add_library(${PROJECT_NAME}_discharge SHARED src/battery_discharge.cpp)
+add_dependencies(${PROJECT_NAME}_discharge ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(${PROJECT_NAME}_discharge ${catkin_LIBRARIES})
 
-add_library(gazebo_ros_battery_consumer SHARED src/battery_consumer.cpp)
-add_dependencies(gazebo_ros_battery_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(gazebo_ros_battery_consumer ${catkin_LIBRARIES})
+add_library(${PROJECT_NAME}_consumer SHARED src/battery_consumer.cpp)
+add_dependencies(${PROJECT_NAME}_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(${PROJECT_NAME}_consumer ${catkin_LIBRARIES})
 
 add_library(gazebo_ros_cmd_vel_battery_consumer SHARED src/cmd_vel_consumer.cpp)
 add_dependencies(gazebo_ros_cmd_vel_battery_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -49,7 +49,7 @@ add_library(gazebo_ros_motor_battery_consumer SHARED src/motor_consumer.cpp)
 add_dependencies(gazebo_ros_motor_battery_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(gazebo_ros_motor_battery_consumer ${catkin_LIBRARIES})
 
-install(TARGETS gazebo_ros_battery_consumer gazebo_ros_battery_discharge gazebo_ros_cmd_vel_battery_consumer gazebo_ros_motor_battery_consumer
+install(TARGETS ${PROJECT_NAME}_consumer ${PROJECT_NAME}_discharge gazebo_ros_cmd_vel_battery_consumer gazebo_ros_motor_battery_consumer
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
