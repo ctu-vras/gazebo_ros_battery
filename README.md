@@ -12,7 +12,7 @@ This plugin is tested for ROS kinetic and Gazebo 9 and 11.
 ## Build
 This is a standard catkin packge. Just add it to your workspace, install dependencies via rosdep, and build it.
 
-Compiling will result in a shared library, `~/catkin_ws/src/gazebo_ros_battery/build/devel/lib/libbattery_discharge.so`, that can be inserted in a Gazebo simulation.
+Compiling will result in a shared library, `~/catkin_ws/src/gazebo_ros_battery/build/devel/lib/libgazebo_ros_battery_discharge.so`, that can be inserted in a Gazebo simulation.
 
 Lastly, add your library path to the `GAZEBO_PLUGIN_PATH`:
 ```bash
@@ -33,7 +33,7 @@ The xml code could be linked to any model in a new `.world` file.
         <voltage>12.592</voltage>
     </battery>
     </link>
-<plugin name="battery" filename="libbattery_discharge.so">
+<plugin name="battery" filename="libgazebo_ros_battery_discharge.so">
     <ros_node>battery_monitor_client</ros_node>
     <link_name>body</link_name>
     <battery_name>linear_battery</battery_name>
@@ -45,7 +45,7 @@ The xml code could be linked to any model in a new `.world` file.
     <smooth_current_tau>1.9499</smooth_current_tau>
     <charge_rate>0.2</charge_rate>
 </plugin>
-<plugin name="consumer" filename="libbattery_consumer.so">
+<plugin name="consumer" filename="libgazebo_ros_battery_consumer.so">
     <link_name>body</link_name>
     <battery_name>linear_battery</battery_name>
     <power_load>6.6</power_load>

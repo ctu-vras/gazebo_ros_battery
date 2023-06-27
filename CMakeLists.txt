@@ -17,8 +17,6 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
 )
 
-find_package(ignition-math4 REQUIRED)
-
 add_service_files(FILES
   SetCharge.srv
   SetCharging.srv
@@ -35,23 +33,23 @@ catkin_package(
 
 include_directories(${catkin_INCLUDE_DIRS})
 
-add_library(battery_discharge SHARED src/battery_discharge.cpp)
-add_dependencies(battery_discharge ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(battery_discharge ${catkin_LIBRARIES})
+add_library(gazebo_ros_battery_discharge SHARED src/battery_discharge.cpp)
+add_dependencies(gazebo_ros_battery_discharge ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(gazebo_ros_battery_discharge ${catkin_LIBRARIES})
 
-add_library(battery_consumer SHARED src/battery_consumer.cpp)
-add_dependencies(battery_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(battery_consumer ${catkin_LIBRARIES})
+add_library(gazebo_ros_battery_consumer SHARED src/battery_consumer.cpp)
+add_dependencies(gazebo_ros_battery_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(gazebo_ros_battery_consumer ${catkin_LIBRARIES})
 
-add_library(cmd_vel_consumer SHARED src/cmd_vel_consumer.cpp)
-add_dependencies(cmd_vel_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(cmd_vel_consumer ${catkin_LIBRARIES})
+add_library(gazebo_ros_cmd_vel_battery_consumer SHARED src/cmd_vel_consumer.cpp)
+add_dependencies(gazebo_ros_cmd_vel_battery_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(gazebo_ros_cmd_vel_battery_consumer ${catkin_LIBRARIES})
 
-add_library(motor_consumer SHARED src/motor_consumer.cpp)
-add_dependencies(motor_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(motor_consumer ${catkin_LIBRARIES})
+add_library(gazebo_ros_motor_battery_consumer SHARED src/motor_consumer.cpp)
+add_dependencies(gazebo_ros_motor_battery_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(gazebo_ros_motor_battery_consumer ${catkin_LIBRARIES})
 
-install(TARGETS battery_consumer battery_discharge cmd_vel_consumer motor_consumer
+install(TARGETS gazebo_ros_battery_consumer gazebo_ros_battery_discharge gazebo_ros_cmd_vel_battery_consumer gazebo_ros_motor_battery_consumer
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

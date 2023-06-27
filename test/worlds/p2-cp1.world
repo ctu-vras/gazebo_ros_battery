@@ -768,7 +768,7 @@
                 <!--<voltage>12.592</voltage>-->
             <!--</battery>-->
         <!--</link>-->
-        <!--<plugin name="battery" filename="libbattery_discharge.so">-->
+        <!--<plugin name="battery" filename="libgazebo_ros_battery_discharge.so">-->
             <!--<ros_node>battery_monitor_client</ros_node>-->
             <!--<link_name>body</link_name>-->
             <!--<battery_name>brass_battery</battery_name>-->
@@ -782,7 +782,7 @@
           <!--&lt;!&ndash; If you charge your battery at a 10-amp rate and you need to replace 36 amp-hours in the battery.-->
           <!--To determine how long (in hours) you will need to charge your battery, divided 36 by 10 = 3.6 or 3.6 hours to recharge your battery. &ndash;&gt;-->
         <!--</plugin>-->
-        <!--<plugin name="consumer" filename="libbattery_consumer.so">-->
+        <!--<plugin name="consumer" filename="libgazebo_ros_battery_consumer.so">-->
             <!--<link_name>body</link_name>-->
             <!--<battery_name>brass_battery</battery_name>-->
             <!--&lt;!&ndash;<power_load>60.6</power_load> &ndash;&gt; power load = 6.6 W-->
