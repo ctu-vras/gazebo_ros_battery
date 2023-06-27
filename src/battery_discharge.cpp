@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Czech Technical University in Prague
 //
 // Original file from https://github.com/tmxkn1/brass_gazebo_battery edited by Martin Pecka:
-// - renamed to gazebo_ros_linear_battery
+// - renamed to gazebo_ros_battery
 // - cleaned up the code
 
 #include "gazebo/common/Time.hh"
@@ -57,7 +57,7 @@ BatteryPlugin::~BatteryPlugin()
 void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
     if (!ros::isInitialized()) {
-        ROS_FATAL_STREAM_NAMED("gazebo_ros_linear_battery", "A ROS node for Gazebo has not been initialized, "
+        ROS_FATAL_STREAM_NAMED("gazebo_ros_battery", "A ROS node for Gazebo has not been initialized, "
             "unable to load plugin. Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the "
             "gazebo_ros package.");
         return;
@@ -193,8 +193,8 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr &_battery)
     return et;
 }
 
-bool BatteryPlugin::SetCharging(gazebo_ros_linear_battery::SetCharging::Request& req,
-                                gazebo_ros_linear_battery::SetCharging::Response& res)
+bool BatteryPlugin::SetCharging(gazebo_ros_battery::SetCharging::Request& req,
+                                gazebo_ros_battery::SetCharging::Response& res)
 {
     lock.lock();
     this->charging = req.charging;
@@ -210,8 +210,8 @@ bool BatteryPlugin::SetCharging(gazebo_ros_linear_battery::SetCharging::Request&
     return true;
 }
 
-bool BatteryPlugin::SetChargingRate(gazebo_ros_linear_battery::SetChargingRate::Request& req,
-                                gazebo_ros_linear_battery::SetChargingRate::Response& res)
+bool BatteryPlugin::SetChargingRate(gazebo_ros_battery::SetChargingRate::Request& req,
+                                gazebo_ros_battery::SetChargingRate::Response& res)
 {
     lock.lock();
     this->qt = req.charge_rate;
@@ -222,8 +222,8 @@ bool BatteryPlugin::SetChargingRate(gazebo_ros_linear_battery::SetChargingRate::
 }
 
 
-bool BatteryPlugin::SetCharge(gazebo_ros_linear_battery::SetCharge::Request &req,
-                              gazebo_ros_linear_battery::SetCharge::Response &res)
+bool BatteryPlugin::SetCharge(gazebo_ros_battery::SetCharge::Request &req,
+                              gazebo_ros_battery::SetCharge::Response &res)
 {
     lock.lock();
     if (req.charge <= this->c){
@@ -240,8 +240,8 @@ bool BatteryPlugin::SetCharge(gazebo_ros_linear_battery::SetCharge::Request &req
     return true;
 }
 
-bool BatteryPlugin::SetModelCoefficients(gazebo_ros_linear_battery::SetCoef::Request &req,
-                                         gazebo_ros_linear_battery::SetCoef::Response &res)
+bool BatteryPlugin::SetModelCoefficients(gazebo_ros_battery::SetCoef::Request &req,
+                                         gazebo_ros_battery::SetCoef::Response &res)
 {
     lock.lock();
     this->e0 = req.constant_coef;

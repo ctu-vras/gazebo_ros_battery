@@ -5,13 +5,13 @@
 // SPDX-FileCopyrightText: Czech Technical University in Prague
 //
 // Original file from https://github.com/rosin-project/brass_gazebo_battery edited by Martin Pecka:
-// - renamed to gazebo_ros_linear_battery
+// - renamed to gazebo_ros_battery
 // - cleaned up the code
 
 #include "gazebo/common/Plugin.hh"
 #include "gazebo/common/CommonTypes.hh"
 #include <boost/thread/mutex.hpp>
-#include "gazebo_ros_linear_battery/SetLoad.h"
+#include "gazebo_ros_battery/SetLoad.h"
 #include "ros/ros.h"
 #include "ros/subscribe_options.h"
 #include "ros/callback_queue.h"
@@ -34,8 +34,8 @@ namespace gazebo
 
     public: virtual void Reset();
 
-    public: bool SetConsumerPowerLoad(gazebo_ros_linear_battery::SetLoad::Request& req,
-                                      gazebo_ros_linear_battery::SetLoad::Response& res);
+    public: bool SetConsumerPowerLoad(gazebo_ros_battery::SetLoad::Request& req,
+                                      gazebo_ros_battery::SetLoad::Response& res);
 
     // Connection to the World Update events.
     protected: event::ConnectionPtr updateConnection;

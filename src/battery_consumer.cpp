@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Czech Technical University in Prague
 //
 // Original file from https://github.com/tmxkn1/brass_gazebo_battery edited by Martin Pecka:
-// - renamed to gazebo_ros_linear_battery
+// - renamed to gazebo_ros_battery
 // - cleaned up the code
 
 #include "battery_consumer.hh"
@@ -68,8 +68,8 @@ void BatteryConsumerPlugin::Reset()
     gzlog << "consumer is reset\n";
 }
 
-bool BatteryConsumerPlugin::SetConsumerPowerLoad(gazebo_ros_linear_battery::SetLoad::Request &req,
-                                                 gazebo_ros_linear_battery::SetLoad::Response &res)
+bool BatteryConsumerPlugin::SetConsumerPowerLoad(gazebo_ros_battery::SetLoad::Request &req,
+                                                 gazebo_ros_battery::SetLoad::Response &res)
 {
     lock.lock();
     double load = this->powerLoad;

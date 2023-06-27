@@ -5,11 +5,11 @@ SPDX-FileCopyrightText: pooyanjamshidi, marioney, tmxkn1
 SPDX-FileCopyrightText: Czech Technical University in Prague
 
 Original file from https://github.com/tmxkn1/brass_gazebo_battery edited by Martin Pecka:
-- renamed to gazebo_ros_linear_battery
+- renamed to gazebo_ros_battery
 - cleaned up the code
 -->
 <package format="3">
-  <name>gazebo_ros_linear_battery</name>
+  <name>gazebo_ros_battery</name>
   <version>1.0.0</version>
   <description>The plugin for battery discharge/charge</description>
 

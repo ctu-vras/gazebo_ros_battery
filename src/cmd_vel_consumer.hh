@@ -5,7 +5,7 @@
 // SPDX-FileCopyrightText: Czech Technical University in Prague
 //
 // Original file from https://github.com/tmxkn1/brass_gazebo_battery edited by Martin Pecka:
-// - renamed to gazebo_ros_linear_battery
+// - renamed to gazebo_ros_battery
 // - cleaned up the code
 
 #include <thread>
@@ -18,7 +18,7 @@
 #include "ros/callback_queue.h"
 #include "geometry_msgs/Twist.h"
 
-#include "gazebo_ros_linear_battery/SetLoad.h"
+#include "gazebo_ros_battery/SetLoad.h"
 
 #define CMD_VEL_CONSUMER_DEBUG
 

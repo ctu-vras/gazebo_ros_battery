@@ -3,11 +3,11 @@
 # SPDX-FileCopyrightText: Czech Technical University in Prague
 #
 # Original file from https://github.com/tmxkn1/brass_gazebo_battery edited by Martin Pecka:
-# - renamed to gazebo_ros_linear_battery
+# - renamed to gazebo_ros_battery
 # - cleaned up the code
 
 cmake_minimum_required(VERSION 3.10.2)
-project(gazebo_ros_linear_battery)
+project(gazebo_ros_battery)
 
 find_package(catkin REQUIRED COMPONENTS
   gazebo_dev
