@@ -6,54 +6,31 @@
 // - renamed to gazebo_ros_battery
 // - cleaned up the code
 
-#include "gazebo/common/Time.hh"
-#include "gazebo/common/Plugin.hh"
-#include "gazebo/common/Battery.hh"
-#include "gazebo/physics/physics.hh"
 #include "battery_discharge.hh"
-#include "std_msgs/Float64.h"
+
+#include <memory>
+#include <mutex>
+#include <string>
+
+#include <gazebo/common/common.hh>
+#include <gazebo/physics/physics.hh>
+#include <sdf/sdf.hh>
+
+#include <ros/ros.h>
+#include <std_msgs/Float64.h>
 
 // #define BATTERY_DEBUG
-
-enum power
-{
-    OFF = 0,
-    ON = 1
-};
-
-template<typename T>
-T max(T x, T y)
-{
-    return x < y ? y : x;
-}
 
 using namespace gazebo;
 
 GZ_REGISTER_MODEL_PLUGIN(BatteryPlugin);
 
-BatteryPlugin::BatteryPlugin()
-{
-    this->c = 0.0;
-    this->r = 0.0;
-    this->tau = 0.0;
-
-    this->e0 = 0.0;
-    this->e1 = 0.0;
-
-    this->q0 = 0.0;
-    this->q = 0.0;
-    this->qt = 0.0;
-
-    this->iraw = 0.0;
-    this->ismooth = 0.0;
-
-    gzlog << "Constructed BatteryPlugin and initialized parameters.\n";
-}
+BatteryPlugin::BatteryPlugin() = default;
 
 BatteryPlugin::~BatteryPlugin()
 {
-    gzdbg << "Destructing BatteryPlugin and removing the ros node.\n";
-    this->rosNode->shutdown();
+    if (this->rosNode)
+        this->rosNode->shutdown();
 }
 
 void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
@@ -69,10 +46,10 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->model = _model;
     this->world = _model->GetWorld();
 
-    this->sim_time_now = this->world->SimTime().Double();
+    this->sim_time_now = this->world->SimTime();
 
     // Create ros node and publish stuff there!
-    this->rosNode.reset(new ros::NodeHandle(_sdf->Get<std::string>("ros_node")));
+    this->rosNode = std::make_unique<ros::NodeHandle>(_sdf->Get<std::string>("ros_node"));
 
     // Publish a topic for charge level
     this->charge_state = this->rosNode->advertise<std_msgs::Float64>("/mobile_base/commands/charge_level", 1);
@@ -87,7 +64,7 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->set_coefficients = this->rosNode->advertiseService(
         this->model->GetName() + "/set_model_coefficients", &BatteryPlugin::SetModelCoefficients, this);
 
-    std::string linkName = _sdf->Get<std::string>("link_name");
+    const auto linkName = _sdf->Get<std::string>("link_name");
     this->link = this->model->GetLink(linkName);
 
     this->e0 = _sdf->Get<double>("constant_coef");
@@ -98,7 +75,7 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->r = _sdf->Get<double>("resistance");
     this->tau = _sdf->Get<double>("smooth_current_tau");
 
-    std::string batteryName = _sdf->Get<std::string>("battery_name");
+    const auto batteryName = _sdf->Get<std::string>("battery_name");
 
     if (this->link->BatteryCount() > 0)
     {
@@ -112,9 +89,10 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     };
 
     // Specifying a custom update function
-    this->battery->SetUpdateFunc(std::bind(&BatteryPlugin::OnUpdateVoltage, this, std::placeholders::_1));
+    this->battery->SetUpdateFunc([this](const common::BatteryPtr& b)
+                                 { return this->OnUpdateVoltage(b); });
 
-    this->sim_time_now = this->world->SimTime().Double();
+    this->sim_time_now = this->world->SimTime();
 
     gzlog << "BatteryPlugin Loaded.\n";
 }
@@ -142,7 +120,7 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
     if (fabs(_battery->Voltage()) < 1e-3)
         return 0.0;
 
-    for (auto powerLoad: _battery->PowerLoads())
+    for (auto powerLoad : _battery->PowerLoads())
         totalpower += powerLoad.second;
 
     // current = power(Watts)/Voltage
@@ -150,50 +128,52 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
 
     this->ismooth = this->ismooth + k * (this->iraw - this->ismooth);
 
-    if (!this->charging)
-    {
-        this->q = this->q - GZ_SEC_TO_HOUR(dt * this->ismooth);
-    } else
-    {
-        this->q = this->q + GZ_SEC_TO_HOUR(dt * this->qt);
-    }
-
-    this->sim_time_now = this->world->SimTime().Double();
-
-#ifdef BATTERY_DEBUG
-    gzdbg << "Current charge:" << this->q << ", at:" << this->sim_time_now << "\n";
-#endif
-
-    this->et = this->e0 + this->e1 * (1 - this->q / this->c) - this->r * this->ismooth;
-
-#ifdef BATTERY_DEBUG
-    gzdbg << "Current voltage:" << this->et << ", at:" << this->sim_time_now << "\n";
-#endif
-
-    //Turn off the motor
-    if (this->q <= 0)
-    {
-        this->sim_time_now = this->world->SimTime().Double();
-
-        // TODO figure out how to turn off the robot
-
-#ifdef BATTERY_DEBUG
-        gzdbg << "Out of juice at:" << this->sim_time_now << "\n";
-#endif
-
-    } else if (this->q >= this->c)
-    {
-        this->q = this->c;
-    }
-
     std_msgs::Float64 charge_msg, charge_msg_mwh;
-    charge_msg.data = this->q;
-    charge_msg_mwh.data = this->q * 1000 * this->et;
+    {
+        std::lock_guard<std::mutex> l(this->lock);
 
-    lock.lock();
+        if (!this->charging)
+        {
+            this->q = this->q - GZ_SEC_TO_HOUR(dt * this->ismooth);
+        } else
+        {
+            this->q = this->q + GZ_SEC_TO_HOUR(dt * this->qt);
+        }
+
+        this->sim_time_now = this->world->SimTime();
+
+#ifdef BATTERY_DEBUG
+        gzdbg << "Current charge:" << this->q << ", at:" << this->sim_time_now << "\n";
+#endif
+
+        this->et = this->e0 + this->e1 * (1 - this->q / this->c) - this->r * this->ismooth;
+
+#ifdef BATTERY_DEBUG
+        gzdbg << "Current voltage:" << this->et << ", at:" << this->sim_time_now << "\n";
+#endif
+
+        // Turn off the motor
+        if (this->q <= 0)
+        {
+            this->sim_time_now = this->world->SimTime();
+
+            // TODO figure out how to turn off the robot
+
+#ifdef BATTERY_DEBUG
+            gzdbg << "Out of juice at:" << this->sim_time_now << "\n";
+#endif
+
+        } else if (this->q >= this->c)
+        {
+            this->q = this->c;
+        }
+
+        charge_msg.data = this->q;
+        charge_msg_mwh.data = this->q * 1000 * this->et;
+    }
+
     this->charge_state.publish(charge_msg);
     this->charge_state_mwh.publish(charge_msg_mwh);
-    lock.unlock();
 
     return et;
 }
@@ -201,16 +181,17 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
 bool BatteryPlugin::SetCharging(gazebo_ros_battery::SetCharging::Request& req,
                                 gazebo_ros_battery::SetCharging::Response& res)
 {
-    lock.lock();
-    this->charging = req.charging;
-    if (this->charging)
+    {
+        std::lock_guard<std::mutex> l(this->lock);
+        this->charging = req.charging;
+    }
+    if (req.charging)
     {
         gzdbg << "Battery is charging.\n";
     } else
     {
         gzdbg << "Battery stopped charging.\n";
     }
-    lock.unlock();
     res.result = true;
     return true;
 }
@@ -218,10 +199,11 @@ bool BatteryPlugin::SetCharging(gazebo_ros_battery::SetCharging::Request& req,
 bool BatteryPlugin::SetChargingRate(gazebo_ros_battery::SetChargingRate::Request& req,
                                     gazebo_ros_battery::SetChargingRate::Response& res)
 {
-    lock.lock();
-    this->qt = req.charge_rate;
-    gzdbg << "Charging rate has been changed to: " << this->qt << "\n";
-    lock.unlock();
+    {
+        std::lock_guard<std::mutex> l(this->lock);
+        this->qt = req.charge_rate;
+    }
+    gzdbg << "Charging rate has been changed to: " << req.charge_rate << "\n";
     res.result = true;
     return true;
 }
@@ -230,7 +212,7 @@ bool BatteryPlugin::SetChargingRate(gazebo_ros_battery::SetChargingRate::Request
 bool BatteryPlugin::SetCharge(gazebo_ros_battery::SetCharge::Request& req,
                               gazebo_ros_battery::SetCharge::Response& res)
 {
-    lock.lock();
+    std::lock_guard<std::mutex> l(this->lock);
     if (req.charge <= this->c)
     {
         this->q = req.charge;
@@ -240,7 +222,6 @@ bool BatteryPlugin::SetCharge(gazebo_ros_battery::SetCharge::Request& req,
         this->q = this->c;
         gzerr << "The charge cannot be higher than the capacity of the battery!\n";
     }
-    lock.unlock();
     res.result = true;
     return true;
 }
@@ -248,11 +229,13 @@ bool BatteryPlugin::SetCharge(gazebo_ros_battery::SetCharge::Request& req,
 bool BatteryPlugin::SetModelCoefficients(gazebo_ros_battery::SetCoef::Request& req,
                                          gazebo_ros_battery::SetCoef::Response& res)
 {
-    lock.lock();
-    this->e0 = req.constant_coef;
-    this->e1 = req.linear_coef;
-    gzdbg << "Power model is changed, new coefficients (constant, linear):" << this->e0 << this->e1 << "\n";
-    lock.unlock();
+    {
+        std::lock_guard<std::mutex> l(this->lock);
+        this->e0 = req.constant_coef;
+        this->e1 = req.linear_coef;
+    }
+    gzdbg << "Power model is changed, new coefficients (constant, linear):" << req.constant_coef
+          << req.linear_coef << "\n";
     res.result = true;
     return true;
 }

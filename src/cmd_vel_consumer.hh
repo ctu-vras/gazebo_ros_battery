@@ -8,43 +8,35 @@
 // - renamed to gazebo_ros_battery
 // - cleaned up the code
 
-#include <thread>
-#include <boost/thread/mutex.hpp>
+#include <limits>
+#include <memory>
 
-#include "gazebo/common/Plugin.hh"
-#include "gazebo/common/CommonTypes.hh"
-#include "ros/ros.h"
-#include "ros/subscribe_options.h"
-#include "ros/callback_queue.h"
-#include "geometry_msgs/Twist.h"
+#include <gazebo/common/common.hh>
+#include <gazebo/physics/physics.hh>
+#include <sdf/sdf.hh>
 
-#include "gazebo_ros_battery/SetLoad.h"
+#include <geometry_msgs/Twist.h>
+#include <ros/ros.h>
+
+#include <gazebo_ros_battery/SetLoad.h>
 
 namespace gazebo
 {
+
 class GAZEBO_VISIBLE CmdVelConsumerPlugin : public ModelPlugin
 {
 public:
-    // Constructor
     CmdVelConsumerPlugin();
 
     ~CmdVelConsumerPlugin() override;
 
-    // Inherited from ModelPlugin
     void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) override;
-
-    void Init() override;
-
-    void Reset() override;
 
     void OnCmdVelMsg(const geometry_msgs::Twist::ConstPtr& _msg);
 
 private:
-    void QueueThread();
-
     double CalculatePower(const geometry_msgs::Twist::ConstPtr& _msg);
 
-    // Connection to the World Update events.
 protected:
     event::ConnectionPtr updateConnection;
     physics::WorldPtr world;
@@ -53,30 +45,18 @@ protected:
     physics::LinkPtr link;
     sdf::ElementPtr sdf;
 
-    // Consumer parameter
-    double powerLoadRate;
-    double consumerIdlePower;
+    double powerLoadRate {0.0};  //!< Consumer parameter.
+    double consumerIdlePower {0.0};  //!< Consumer parameter.
 
 private:
     common::BatteryPtr battery;
 
-    // Consumer identifier
-    int32_t consumerId;
+    uint32_t consumerId {std::numeric_limits<uint32_t>::max()};  //!< Consumer identifier.
 
 protected:
-    double powerLoad;
-
-    // This node is for ros communications
     std::unique_ptr<ros::NodeHandle> rosNode;
 
     ros::Subscriber cmd_vel_sub;
     ros::Publisher cmd_vel_power_pub;
-
-    boost::mutex lock;
-
-private:
-    ros::CallbackQueue rosQueue;
-
-    std::thread rosQueueThread;
 };
 }

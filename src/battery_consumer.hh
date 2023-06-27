@@ -8,30 +8,28 @@
 // - renamed to gazebo_ros_battery
 // - cleaned up the code
 
-#include "gazebo/common/Plugin.hh"
-#include "gazebo/common/CommonTypes.hh"
-#include <boost/thread/mutex.hpp>
-#include "gazebo_ros_battery/SetLoad.h"
-#include "ros/ros.h"
-#include "ros/subscribe_options.h"
-#include "ros/callback_queue.h"
+#include <limits>
+#include <memory>
+
+#include <gazebo/common/common.hh>
+#include <gazebo/physics/physics.hh>
+#include <sdf/sdf.hh>
+
+#include <ros/ros.h>
+
+#include <gazebo_ros_battery/SetLoad.h>
 
 namespace gazebo
 {
 
 class GAZEBO_VISIBLE BatteryConsumerPlugin : public ModelPlugin
 {
-    // Constructor
 public:
     BatteryConsumerPlugin();
 
     ~BatteryConsumerPlugin() override;
 
     void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) override;
-
-    void Init() override;
-
-    void Reset() override;
 
     bool SetConsumerPowerLoad(gazebo_ros_battery::SetLoad::Request& req,
                               gazebo_ros_battery::SetLoad::Response& res);
@@ -46,17 +44,13 @@ protected:
     common::BatteryPtr battery;
 
 private:
-    // Consumer identifier
-    int32_t consumerId;
+    uint32_t consumerId {std::numeric_limits<uint32_t>::max()};  //!< Consumer identifier
 
 protected:
-    double powerLoad;
+    double powerLoad {0.0};
 
-    // This node is for ros communications
     std::unique_ptr<ros::NodeHandle> rosNode;
 
     ros::ServiceServer set_power_load;
-
-    boost::mutex lock;
 };
 }

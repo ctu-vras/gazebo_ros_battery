@@ -6,19 +6,19 @@
 // - renamed to gazebo_ros_battery
 // - cleaned up the code
 
-#include <thread>
-
-#include "ros/ros.h"
-#include "ros/callback_queue.h"
-#include "ros/subscribe_options.h"
-#include "geometry_msgs/Twist.h"
-#include "std_msgs/Float64.h"
-#include "gazebo/common/Assert.hh"
-#include "gazebo/common/Battery.hh"
-#include "gazebo/physics/physics.hh"
-
 #include "cmd_vel_consumer.hh"
 
+#include <limits>
+#include <memory>
+#include <string>
+
+#include <gazebo/common/common.hh>
+#include <gazebo/physics/physics.hh>
+#include <sdf/sdf.hh>
+
+#include <geometry_msgs/Twist.h>
+#include <ros/ros.h>
+#include <std_msgs/Float64.h>
 
 // #define CMD_VEL_CONSUMER_DEBUG
 
@@ -26,14 +26,14 @@ using namespace gazebo;
 
 GZ_REGISTER_MODEL_PLUGIN(CmdVelConsumerPlugin);
 
-CmdVelConsumerPlugin::CmdVelConsumerPlugin() : consumerId(-1)
-{
-}
+CmdVelConsumerPlugin::CmdVelConsumerPlugin() = default;
 
 CmdVelConsumerPlugin::~CmdVelConsumerPlugin()
 {
-    if (this->battery && this->consumerId != -1)
+    if (this->battery && this->consumerId != std::numeric_limits<uint32_t>::max())
         this->battery->RemoveConsumer(this->consumerId);
+    if (this->rosNode)
+        this->rosNode->shutdown();
 }
 
 void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
@@ -49,45 +49,46 @@ void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->model = _model;
     this->world = _model->GetWorld();
 
-    std::string linkName = _sdf->Get<std::string>("link_name");
-    std::string batteryName = _sdf->Get<std::string>("battery_name");
-    std::string cmdVelTopic = _sdf->Get<std::string>("cmd_vel_topic");
+    const auto linkName = _sdf->Get<std::string>("link_name");
+    const auto batteryName = _sdf->Get<std::string>("battery_name");
+    const auto cmdVelTopic = _sdf->Get<std::string>("cmd_vel_topic");
     this->powerLoadRate = _sdf->Get<double>("power_load_rate");
     this->consumerIdlePower = _sdf->Get<double>("consumer_idle_power");
-    GZ_ASSERT(this->powerLoadRate >= 0, "consume_rate cannot be negative.");
-    GZ_ASSERT(this->consumerIdlePower >= 0, "consume_constant cannot be negative.");
+    if (this->powerLoadRate < 0)
+    {
+        gzerr << "power_load_rate cannot be negative.\n";
+        return;
+    }
+    if (this->consumerIdlePower < 0)
+    {
+        gzerr << "consumer_idle_power cannot be negative.\n";
+        return;
+    }
 
     this->link = _model->GetLink(linkName);
-    GZ_ASSERT(this->link, "Cannot find a link with the specified link_name.");
+    if (!this->link)
+    {
+        gzerr << "Cannot find a link with name '" << linkName << "'.\n";
+        return;
+    }
     this->battery = this->link->Battery(batteryName);
-    GZ_ASSERT(this->link, "Cannot find a battery in the link with the specified battery_name. Make sure the "
-                          "battery_name specified in the plugin can be found in the specified link.");
+    if (!this->battery)
+    {
+        gzerr << "Cannot find a battery '" << batteryName << "' in link '" << linkName << "'. Make sure the "
+              << "battery_name specified in the plugin can be found in the specified link.\n";
+        return;
+    }
 
     this->consumerId = this->battery->AddConsumer();
     this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
 
-    this->rosNode.reset(new ros::NodeHandle(_sdf->Get<std::string>("ros_node")));
+    this->rosNode = std::make_unique<ros::NodeHandle>(_sdf->Get<std::string>("ros_node"));
     this->cmd_vel_power_pub = this->rosNode->advertise<std_msgs::Float64>(
         "/mobile_base/commands/consumer/cmd_vel_power", 1);
-    ros::SubscribeOptions so = ros::SubscribeOptions::create<geometry_msgs::Twist>(
-        "/" + this->model->GetName() + cmdVelTopic,
-        1,
-        boost::bind(&CmdVelConsumerPlugin::OnCmdVelMsg, this, _1),
-        ros::VoidPtr(), &this->rosQueue);
-    this->cmd_vel_sub = this->rosNode->subscribe(so);
-    this->rosQueueThread = std::thread(std::bind(&CmdVelConsumerPlugin::QueueThread, this));
+    this->cmd_vel_sub = this->rosNode->subscribe(
+        "/" + this->model->GetName() + cmdVelTopic, 1, &CmdVelConsumerPlugin::OnCmdVelMsg, this);
 
     gzlog << "cmd_vel consumer loaded\n";
-}
-
-void CmdVelConsumerPlugin::Init()
-{
-    gzlog << "cmd_vel_consumer is initialized\n";
-}
-
-void CmdVelConsumerPlugin::Reset()
-{
-    gzlog << "cmd_vel_consumer is reset\n";
 }
 
 double CmdVelConsumerPlugin::CalculatePower(const geometry_msgs::Twist::ConstPtr& _msg)
@@ -99,20 +100,9 @@ double CmdVelConsumerPlugin::CalculatePower(const geometry_msgs::Twist::ConstPtr
 
 void CmdVelConsumerPlugin::OnCmdVelMsg(const geometry_msgs::Twist::ConstPtr& _msg)
 {
-    double cmd_vel_power = CalculatePower(_msg);
+    const auto cmd_vel_power = CalculatePower(_msg);
     this->battery->SetPowerLoad(this->consumerId, cmd_vel_power);
     std_msgs::Float64 cmd_vel_power_msg;
     cmd_vel_power_msg.data = cmd_vel_power;
-    lock.lock();
     this->cmd_vel_power_pub.publish(cmd_vel_power_msg);
-    lock.unlock();
-}
-
-void CmdVelConsumerPlugin::QueueThread()
-{
-    static const double timeout = 0.01;
-    while (this->rosNode->ok())
-    {
-        this->rosQueue.callAvailable(ros::WallDuration(timeout));
-    }
 }

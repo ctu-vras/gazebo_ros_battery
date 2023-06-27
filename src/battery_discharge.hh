@@ -8,20 +8,19 @@
 // - renamed to gazebo_ros_battery
 // - cleaned up the code
 
-#include <map>
-#include <string>
-#include "gazebo/common/Plugin.hh"
-#include "gazebo/common/CommonTypes.hh"
-#include "gazebo/physics/physics.hh"
-#include "ros/ros.h"
-#include "ros/subscribe_options.h"
-#include "ros/callback_queue.h"
-#include <boost/thread/mutex.hpp>
-#include "std_msgs/Bool.h"
-#include "gazebo_ros_battery/SetCharge.h"
-#include "gazebo_ros_battery/SetCharging.h"
-#include "gazebo_ros_battery/SetCoef.h"
-#include "gazebo_ros_battery/SetChargingRate.h"
+#include <memory>
+#include <mutex>
+
+#include <gazebo/common/common.hh>
+#include <gazebo/physics/physics.hh>
+#include <sdf/sdf.hh>
+
+#include <ros/ros.h>
+
+#include <gazebo_ros_battery/SetCharge.h>
+#include <gazebo_ros_battery/SetCharging.h>
+#include <gazebo_ros_battery/SetCoef.h>
+#include <gazebo_ros_battery/SetChargingRate.h>
 
 namespace gazebo
 {
@@ -67,34 +66,25 @@ protected:
     sdf::ElementPtr sdf;
 
     // E(t) = e0 + e1* Q(t)/c
-    double et;
-    double e0;
-    double e1;
+    double et {0.0};
+    double e0 {0.0};
+    double e1 {0.0};
 
-    // Initial battery charge in Ah.
-    double q0;
+    double q0 {0.0};  //!< Initial battery charge in Ah.
 
-    // Charge rate in A
-    // More description about charge rate: http://batteriesbyfisher.com/determining-charge-time
-    double qt;
+    double qt {0.0};  //!< Charge rate in A
 
-    // Battery capacity in Ah.
-    double c;
+    double c {0.0};  //!< Battery capacity in Ah.
 
-    // Battery inner resistance in Ohm
-    double r;
+    double r {0.0};  //!< Battery inner resistance in Ohm
 
-    // Current low-pass filter characteristic time in seconds.
-    double tau;
+    double tau {0.0};  //!< Current low-pass filter characteristic time in seconds.
 
-    // Raw battery current in A.
-    double iraw;
+    double iraw {0.0};  //!< Raw battery current in A.
 
-    // Smoothed battery current in A.
-    double ismooth;
+    double ismooth {0.0};  //!< Smoothed battery current in A.
 
-    // Instantaneous battery charge in Ah.
-    double q;
+    double q {0.0};  //!< Instantaneous battery charge in Ah.
 
     // This node is for ros communications
     std::unique_ptr<ros::NodeHandle> rosNode;
@@ -108,10 +98,10 @@ protected:
     ros::ServiceServer set_coefficients;
     ros::ServiceServer set_charging_rate;
 
-    boost::mutex lock;
+    std::mutex lock;
 
-    bool charging;
+    bool charging {false};
 
-    double sim_time_now;
+    common::Time sim_time_now;
 };
 }

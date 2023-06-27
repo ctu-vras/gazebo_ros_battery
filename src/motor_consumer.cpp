@@ -6,20 +6,20 @@
 // - renamed to gazebo_ros_battery
 // - cleaned up the code
 
-#include <thread>
-#include <math.h>
-
-#include "ros/ros.h"
-#include "ros/callback_queue.h"
-#include "ros/subscribe_options.h"
-#include "sensor_msgs/JointState.h"
-#include "std_msgs/Float64.h"
-#include "gazebo/common/Assert.hh"
-#include "gazebo/common/Battery.hh"
-#include "gazebo/physics/physics.hh"
-
 #include "motor_consumer.hh"
 
+#include <algorithm>
+#include <limits>
+#include <memory>
+#include <string>
+
+#include <gazebo/common/common.hh>
+#include <gazebo/physics/physics.hh>
+#include <sdf/sdf.hh>
+
+#include <ros/ros.h>
+#include <sensor_msgs/JointState.h>
+#include <std_msgs/Float64.h>
 
 // #define MOTOR_CONSUMER_DEBUG
 
@@ -27,14 +27,14 @@ using namespace gazebo;
 
 GZ_REGISTER_MODEL_PLUGIN(MotorConsumerPlugin);
 
-MotorConsumerPlugin::MotorConsumerPlugin() : consumerId(-1)
-{
-}
+MotorConsumerPlugin::MotorConsumerPlugin() = default;
 
 MotorConsumerPlugin::~MotorConsumerPlugin()
 {
-    if (this->battery && this->consumerId != -1)
+    if (this->battery && this->consumerId != std::numeric_limits<uint32_t>::max())
         this->battery->RemoveConsumer(this->consumerId);
+    if (this->rosNode)
+        this->rosNode->shutdown();
 }
 
 void MotorConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
@@ -50,60 +50,54 @@ void MotorConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->model = _model;
     this->world = _model->GetWorld();
 
-    std::string linkName = _sdf->Get<std::string>("link_name");
-    std::string batteryName = _sdf->Get<std::string>("battery_name");
+    const auto linkName = _sdf->Get<std::string>("link_name");
+    const auto batteryName = _sdf->Get<std::string>("battery_name");
     this->powerLoadRate = _sdf->Get<double>("power_load_rate");
     this->consumerIdlePower = _sdf->Get<double>("consumer_idle_power");
-    GZ_ASSERT(this->powerLoadRate >= 0, "consume_rate cannot be negative.");
-    GZ_ASSERT(this->consumerIdlePower >= 0, "consume_constant cannot be negative.");
+    if (this->powerLoadRate < 0)
+    {
+        gzerr << "power_load_rate cannot be negative.\n";
+        return;
+    }
+    if (this->consumerIdlePower < 0)
+    {
+        gzerr << "consumer_idle_power cannot be negative.\n";
+        return;
+    }
 
     this->link = _model->GetLink(linkName);
-    GZ_ASSERT(this->link, "Cannot find a link with the specified link_name.");
+    if (!this->link)
+    {
+        gzerr << "Cannot find a link with name '" << linkName << "'.\n";
+        return;
+    }
     this->battery = this->link->Battery(batteryName);
-    GZ_ASSERT(this->link, "Cannot find a battery in the link with the specified battery_name. Make sure the "
-                          "battery_name specified in the plugin can be found in the specified link.");
+    if (!this->battery)
+    {
+        gzerr << "Cannot find a battery '" << batteryName << "' in link '" << linkName << "'. Make sure the "
+              << "battery_name specified in the plugin can be found in the specified link.\n";
+        return;
+    }
 
     this->consumerId = this->battery->AddConsumer();
     this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
 
-    this->rosNode.reset(new ros::NodeHandle(_sdf->Get<std::string>("ros_node")));
+    this->rosNode = std::make_unique<ros::NodeHandle>(_sdf->Get<std::string>("ros_node"));
     this->motor_power_pub = this->rosNode->advertise<std_msgs::Float64>(
         "/mobile_base/commands/consumer/motor_power", 1);
-    ros::SubscribeOptions so = ros::SubscribeOptions::create<sensor_msgs::JointState>(
-        "/" + this->model->GetName() + "/joint_states",
-        1,
-        boost::bind(&MotorConsumerPlugin::OnJointStateMsg, this, _1),
-        ros::VoidPtr(), &this->rosQueue);
-    this->joint_state_sub = this->rosNode->subscribe(so);
-    this->rosQueueThread = std::thread(std::bind(&MotorConsumerPlugin::QueueThread, this));
+    this->joint_state_sub = this->rosNode->subscribe(
+        "/" + this->model->GetName() + "/joint_states", 1, &MotorConsumerPlugin::OnJointStateMsg, this);
 
     gzlog << "motor consumer loaded\n";
 }
 
-void MotorConsumerPlugin::Init()
-{
-    gzlog << "motor_consumer is initialized\n";
-}
-
-void MotorConsumerPlugin::Reset()
-{
-    gzlog << "motor_consumer is reset\n";
-}
-
 double MotorConsumerPlugin::CalculatePower(const sensor_msgs::JointState::ConstPtr& _msg)
 {
-    int n = sizeof(_msg->velocity) / sizeof(_msg->velocity[0]) + 1;
     double wheelVel = 0;
-    for (int i = 0; i < n; i++)
-    {
-        wheelVel += std::fabs(_msg->velocity[i]);
-    }
+    for (double velocity : _msg->velocity)
+        wheelVel += std::fabs(velocity);
 #ifdef MOTOR_CONSUMER_DEBUG
-    gzdbg << "motor_consumer:: "
-    << n
-    << " joints found. Joint velocity:"
-    << wheelVel
-    << "\n";
+    gzdbg << "motor_consumer: " << _msg->velocity.size() << " joints found. Joint velocity:" << wheelVel << "\n";
 #endif
     return std::max(wheelVel * this->powerLoadRate, this->consumerIdlePower);
 }
@@ -114,16 +108,5 @@ void MotorConsumerPlugin::OnJointStateMsg(const sensor_msgs::JointState::ConstPt
     this->battery->SetPowerLoad(this->consumerId, motor_power);
     std_msgs::Float64 motor_power_msg;
     motor_power_msg.data = motor_power;
-    lock.lock();
     this->motor_power_pub.publish(motor_power_msg);
-    lock.unlock();
-}
-
-void MotorConsumerPlugin::QueueThread()
-{
-    static const double timeout = 0.01;
-    while (this->rosNode->ok())
-    {
-        this->rosQueue.callAvailable(ros::WallDuration(timeout));
-    }
 }

@@ -9,6 +9,8 @@
 cmake_minimum_required(VERSION 3.10.2)
 project(gazebo_ros_battery)
 
+set(CMAKE_CXX_STANDARD 17)
+
 find_package(catkin REQUIRED COMPONENTS
   gazebo_dev
   gazebo_plugins
@@ -73,6 +75,14 @@ if (CATKIN_ENABLE_TESTING)
     if(DEFINED ENV{ROS_ROOT} AND EXISTS "${ROS_HOME}/rosdep/sources.cache")
         roslint_custom(catkin_lint -W2 .)
     endif()
+
+    # Roslint C++ - checks formatting and some other rules for C++ files
+    file(GLOB_RECURSE ROSLINT_SRC src/*.cpp src/*.hh)
+
+    set(ROSLINT_CPP_OPTS "--extensions=h,hpp,hh,c,cpp,cc;--linelength=120;--filter=\
+    -build/header_guard,-readability/namespace,-whitespace/braces,-runtime/references,\
+    -build/c++11,-readability/nolint,-readability/todo,-legal/copyright,-build/namespaces")
+    roslint_cpp(${ROSLINT_SRC})
 
     roslint_add_test()
 endif()
