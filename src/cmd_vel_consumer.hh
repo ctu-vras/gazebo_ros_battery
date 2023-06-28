@@ -12,7 +12,10 @@
 #include <memory>
 
 #include <gazebo/common/common.hh>
+#include <gazebo/msgs/pose.pb.h>
+#include <gazebo/msgs/twist.pb.h>
 #include <gazebo/physics/physics.hh>
+#include <gazebo/transport/transport.hh>
 #include <sdf/sdf.hh>
 
 #include <geometry_msgs/Twist.h>
@@ -32,10 +35,13 @@ public:
 
     void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) override;
 
-    void OnCmdVelMsg(const geometry_msgs::Twist::ConstPtr& _msg);
+    void OnCmdVelMsg(const geometry_msgs::Twist& _msg);
+    void OnGzTwistMsg(const ConstTwistPtr& _msg);
+    void OnGzPoseMsg(const ConstPosePtr& _msg);
+    void OnUpdate(const common::UpdateInfo& _info);
 
 private:
-    double CalculatePower(const geometry_msgs::Twist::ConstPtr& _msg);
+    double CalculatePower(const geometry_msgs::Twist& _msg);
 
 protected:
     event::ConnectionPtr updateConnection;
@@ -45,18 +51,25 @@ protected:
     physics::LinkPtr link;
     sdf::ElementPtr sdf;
 
-    double powerLoadRate {0.0};  //!< Consumer parameter.
+    msgs::Twist powerLoadRates;  //!< Consumer parameter.
     double consumerIdlePower {0.0};  //!< Consumer parameter.
+    double commandDuration {0.1}; //!< For how long a velocity command is valid.
 
 private:
     common::BatteryPtr battery;
 
     uint32_t consumerId {std::numeric_limits<uint32_t>::max()};  //!< Consumer identifier.
+    
+    common::Time lastCmdTime;
 
 protected:
     std::unique_ptr<ros::NodeHandle> rosNode;
+    transport::NodePtr gzNode;
 
     ros::Subscriber cmd_vel_sub;
+    transport::SubscriberPtr gz_twist_sub;
+    transport::SubscriberPtr gz_pose_sub;
     ros::Publisher cmd_vel_power_pub;
+    event::ConnectionPtr beforePhysicsUpdateConnection;
 };
 }
