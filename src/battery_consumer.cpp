@@ -5,6 +5,7 @@
 // Original file from https://github.com/tmxkn1/brass_gazebo_battery edited by Martin Pecka:
 // - renamed to gazebo_ros_battery
 // - cleaned up the code
+// - renamed a few SDF parameters
 
 #include "battery_consumer.hh"
 
@@ -47,6 +48,14 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->model = _model;
     this->world = _model->GetWorld();
 
+    auto robotNamespace = _model->GetName();
+    if (_sdf->HasElement("robotNamespace"))
+    {
+        robotNamespace = _sdf->GetElement("robotNamespace")->Get<std::string>();
+        if (robotNamespace.empty()) robotNamespace = _model->GetName();
+    }
+    if (!robotNamespace.empty()) robotNamespace += "/";
+
     const auto linkName = _sdf->Get<std::string>("link_name");
     const auto batteryName = _sdf->Get<std::string>("battery_name");
 
@@ -65,16 +74,18 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
         return;
     }
 
+    const auto defaultConsumerName = _sdf->GetAttribute("name")->GetAsString();
+    const auto consumerName = _sdf->Get<std::string>("consumer_name", defaultConsumerName).first;
+
     // Add consumer and sets its power load
     this->powerLoad = _sdf->Get<double>("power_load");
     this->consumerId = this->battery->AddConsumer();
     this->battery->SetPowerLoad(this->consumerId, powerLoad);
 
-    // Create ros node and publish stuff there!
-    this->rosNode = std::make_unique<ros::NodeHandle>(_sdf->Get<std::string>("ros_node"));
+    this->rosNode = std::make_unique<ros::NodeHandle>(robotNamespace);
 
-    this->set_power_load = this->rosNode->advertiseService(
-        this->model->GetName() + "/set_power_load", &BatteryConsumerPlugin::SetConsumerPowerLoad, this);
+    this->set_power_load = ros::NodeHandle(*this->rosNode, consumerName).advertiseService(
+        "set_power_load", &BatteryConsumerPlugin::SetConsumerPowerLoad, this);
 
     gzlog << "consumer loaded\n";
 }

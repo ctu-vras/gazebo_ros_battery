@@ -10,12 +10,14 @@
 
 #include <memory>
 #include <mutex>
+#include <string>
 
 #include <gazebo/common/common.hh>
 #include <gazebo/physics/physics.hh>
 #include <sdf/sdf.hh>
 
 #include <ros/ros.h>
+#include <sensor_msgs/BatteryState.h>
 
 #include <gazebo_ros_battery/SetCharge.h>
 #include <gazebo_ros_battery/SetCharging.h>
@@ -64,9 +66,10 @@ protected:
     physics::LinkPtr link;
     common::BatteryPtr battery;
     sdf::ElementPtr sdf;
+    common::Time lastUpdateTime;
+    double updatePeriod {1.0};
 
     // E(t) = e0 + e1* Q(t)/c
-    double et {0.0};
     double e0 {0.0};
     double e1 {0.0};
 
@@ -89,8 +92,8 @@ protected:
     // This node is for ros communications
     std::unique_ptr<ros::NodeHandle> rosNode;
 
-    ros::Publisher charge_state;
-    ros::Publisher charge_state_mwh;
+    ros::Publisher battery_state;
+    ros::Publisher charge_state_wh;
     ros::Publisher motor_power;
 
     ros::ServiceServer set_charging;
@@ -101,7 +104,6 @@ protected:
     std::mutex lock;
 
     bool charging {false};
-
-    common::Time sim_time_now;
+    sensor_msgs::BatteryState batteryMsg;
 };
 }

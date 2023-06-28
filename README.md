@@ -34,7 +34,6 @@ The xml code could be linked to any model in a new `.world` file.
     </battery>
     </link>
 <plugin name="battery" filename="libgazebo_ros_battery_discharge.so">
-    <ros_node>battery_monitor_client</ros_node>
     <link_name>body</link_name>
     <battery_name>linear_battery</battery_name>
     <constant_coef>12.694</constant_coef>
@@ -65,17 +64,18 @@ gazebo test/worlds/p2-cp1.world --verbose
 This Gazebo plugin expose several services that can be accessed via ROS:
 
 ```
-/battery_monitor_client/battery_demo_model/set_charge
-/battery_monitor_client/battery_demo_model/set_charge_rate
-/battery_monitor_client/battery_demo_model/set_charging
-/battery_monitor_client/battery_demo_model/set_model_coefficients
-/battery_monitor_client/battery_demo_model/set_power_load
+set_charge
+set_charge_rate
+set_charging
+set_model_coefficients
+consumer/set_power_load
 ```
 
-Also, this publish information about the status of robot battery to the following topics:
+Also, this publishes information about the status of robot battery to the following topics:
 ```
-/mobile_base/commands/charge_level
-/mobile_base/commands/motor_power
+battery_state
+charge_level_wh
+/joint/motor_power
 ```
 
 ## Notes about conversions

@@ -10,6 +10,8 @@
 
 #include <limits>
 #include <memory>
+#include <string>
+#include <unordered_map>
 
 #include <gazebo/common/common.hh>
 #include <gazebo/physics/physics.hh>
@@ -43,9 +45,10 @@ protected:
     physics::PhysicsEnginePtr physics;
     physics::ModelPtr model;
     physics::LinkPtr link;
+    std::unordered_map<std::string, physics::JointPtr> joints;
     sdf::ElementPtr sdf;
 
-    double powerLoadRate {0.0};  //!< Consumer parameter.
+    double efficiency {1.0};  //!< Consumer parameter.
     double consumerIdlePower {0.0};  //!< Consumer parameter.
 
 private:

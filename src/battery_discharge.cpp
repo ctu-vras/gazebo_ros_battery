@@ -5,6 +5,7 @@
 // Original file from https://github.com/tmxkn1/brass_gazebo_battery edited by Martin Pecka:
 // - renamed to gazebo_ros_battery
 // - cleaned up the code
+// - changed to publish BatteryState message
 
 #include "battery_discharge.hh"
 
@@ -17,6 +18,7 @@
 #include <sdf/sdf.hh>
 
 #include <ros/ros.h>
+#include <sensor_msgs/BatteryState.h>
 #include <std_msgs/Float64.h>
 
 // #define BATTERY_DEBUG
@@ -46,32 +48,35 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->model = _model;
     this->world = _model->GetWorld();
 
-    this->sim_time_now = this->world->SimTime();
+    auto robotNamespace = _model->GetName();
+    if (_sdf->HasElement("robotNamespace"))
+    {
+        robotNamespace = _sdf->GetElement("robotNamespace")->Get<std::string>();
+        if (robotNamespace.empty()) robotNamespace = _model->GetName();
+    }
+    if (!robotNamespace.empty()) robotNamespace += "/";
 
-    // Create ros node and publish stuff there!
-    this->rosNode = std::make_unique<ros::NodeHandle>(_sdf->Get<std::string>("ros_node"));
+    this->rosNode = std::make_unique<ros::NodeHandle>(robotNamespace);
 
-    // Publish a topic for charge level
-    this->charge_state = this->rosNode->advertise<std_msgs::Float64>("/mobile_base/commands/charge_level", 1);
-    this->charge_state_mwh = this->rosNode->advertise<std_msgs::Float64>("/mobile_base/commands/charge_level_mwh", 1);
+    this->battery_state = this->rosNode->advertise<sensor_msgs::BatteryState>("battery_state", 1);
+    this->charge_state_wh = this->rosNode->advertise<std_msgs::Float64>("charge_level_wh", 1);
 
-    this->set_charging = this->rosNode->advertiseService(
-        this->model->GetName() + "/set_charging", &BatteryPlugin::SetCharging, this);
-    this->set_charging_rate = this->rosNode->advertiseService(
-        this->model->GetName() + "/set_charge_rate", &BatteryPlugin::SetChargingRate, this);
-    this->set_charge = this->rosNode->advertiseService(
-        this->model->GetName() + "/set_charge", &BatteryPlugin::SetCharge, this);
+    this->set_charging = this->rosNode->advertiseService("set_charging", &BatteryPlugin::SetCharging, this);
+    this->set_charging_rate = this->rosNode->advertiseService("set_charge_rate", &BatteryPlugin::SetChargingRate, this);
+    this->set_charge = this->rosNode->advertiseService("set_charge", &BatteryPlugin::SetCharge, this);
     this->set_coefficients = this->rosNode->advertiseService(
-        this->model->GetName() + "/set_model_coefficients", &BatteryPlugin::SetModelCoefficients, this);
+        "set_model_coefficients", &BatteryPlugin::SetModelCoefficients, this);
 
     const auto linkName = _sdf->Get<std::string>("link_name");
     this->link = this->model->GetLink(linkName);
 
+    this->updatePeriod = 1.0 / _sdf->Get<double>("update_rate", 1.0).first;
     this->e0 = _sdf->Get<double>("constant_coef");
     this->e1 = _sdf->Get<double>("linear_coef");
     this->q0 = _sdf->Get<double>("initial_charge");
     this->qt = _sdf->Get<double>("charge_rate");
     this->c = _sdf->Get<double>("capacity");
+    const auto designCapacity = _sdf->Get<double>("capacity", this->c).first;
     this->r = _sdf->Get<double>("resistance");
     this->tau = _sdf->Get<double>("smooth_current_tau");
 
@@ -82,17 +87,46 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
         // Creates the battery
         this->battery = this->link->Battery(batteryName);
         gzlog << "Created battery" << batteryName << ".\n";
-    } else
+    }
+    else
     {
         gzerr << "There is no battery specification in the link!\n";
         return;
-    };
+    }
+
+    const auto frameId = _sdf->Get<std::string>("frame_id", batteryName).first;
+
+    const auto batteryLocation = _sdf->Get<std::string>("location", "").first;
+    const auto batterySerial = _sdf->Get<std::string>("serial_number", "").first;
+    const auto technology = _sdf->Get<std::string>("technology", "").first;
+    auto powerSupplyTechnology = sensor_msgs::BatteryState::POWER_SUPPLY_TECHNOLOGY_UNKNOWN;
+    if (technology == "NIMH")
+        powerSupplyTechnology = sensor_msgs::BatteryState::POWER_SUPPLY_TECHNOLOGY_NIMH;
+    else if (technology == "LION")
+        powerSupplyTechnology = sensor_msgs::BatteryState::POWER_SUPPLY_TECHNOLOGY_LION;
+    else if (technology == "LIPO")
+        powerSupplyTechnology = sensor_msgs::BatteryState::POWER_SUPPLY_TECHNOLOGY_LIPO;
+    else if (technology == "LIFE")
+        powerSupplyTechnology = sensor_msgs::BatteryState::POWER_SUPPLY_TECHNOLOGY_LIFE;
+    else if (technology == "NICD")
+        powerSupplyTechnology = sensor_msgs::BatteryState::POWER_SUPPLY_TECHNOLOGY_NICD;
+    else if (technology == "LIMN")
+        powerSupplyTechnology = sensor_msgs::BatteryState::POWER_SUPPLY_TECHNOLOGY_LIMN;
+    else if (!technology.empty())
+        gzerr << "Unknown battery technology " << technology << "!\n";
+
+    this->batteryMsg.header.frame_id = frameId;
+    this->batteryMsg.capacity = static_cast<float>(this->c);
+    this->batteryMsg.design_capacity = static_cast<float>(designCapacity);
+    this->batteryMsg.power_supply_health = sensor_msgs::BatteryState::POWER_SUPPLY_HEALTH_UNKNOWN;
+    this->batteryMsg.power_supply_technology = powerSupplyTechnology;
+    this->batteryMsg.present = true;
+    this->batteryMsg.location = batteryLocation;
+    this->batteryMsg.serial_number = batterySerial;
 
     // Specifying a custom update function
     this->battery->SetUpdateFunc([this](const common::BatteryPtr& b)
                                  { return this->OnUpdateVoltage(b); });
-
-    this->sim_time_now = this->world->SimTime();
 
     gzlog << "BatteryPlugin Loaded.\n";
 }
@@ -117,9 +151,6 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
     double totalpower = 0.0;
     double k = dt / this->tau;
 
-    if (fabs(_battery->Voltage()) < 1e-3)
-        return 0.0;
-
     for (auto powerLoad : _battery->PowerLoads())
         totalpower += powerLoad.second;
 
@@ -128,25 +159,28 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
 
     this->ismooth = this->ismooth + k * (this->iraw - this->ismooth);
 
-    std_msgs::Float64 charge_msg, charge_msg_mwh;
+    double et;  // Voltage on terminal
+    double charge;
+    bool wasCharging;
     {
         std::lock_guard<std::mutex> l(this->lock);
+
+        wasCharging = this->charging;
 
         if (!this->charging)
         {
             this->q = this->q - GZ_SEC_TO_HOUR(dt * this->ismooth);
-        } else
+        }
+        else
         {
             this->q = this->q + GZ_SEC_TO_HOUR(dt * this->qt);
         }
 
-        this->sim_time_now = this->world->SimTime();
-
 #ifdef BATTERY_DEBUG
-        gzdbg << "Current charge:" << this->q << ", at:" << this->sim_time_now << "\n";
+        gzdbg << "Current charge:" << this->charge << ", at:" << this->sim_time_now << "\n";
 #endif
 
-        this->et = this->e0 + this->e1 * (1 - this->q / this->c) - this->r * this->ismooth;
+        et = this->e0 + this->e1 * (1 - this->q / this->c) - this->r * this->ismooth;
 
 #ifdef BATTERY_DEBUG
         gzdbg << "Current voltage:" << this->et << ", at:" << this->sim_time_now << "\n";
@@ -155,25 +189,42 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
         // Turn off the motor
         if (this->q <= 0)
         {
-            this->sim_time_now = this->world->SimTime();
+            et = 0;
 
             // TODO figure out how to turn off the robot
 
 #ifdef BATTERY_DEBUG
-            gzdbg << "Out of juice at:" << this->sim_time_now << "\n";
+            gzdbg << "Out of juice at:" << this->world->SimTime() << "\n";
 #endif
-
-        } else if (this->q >= this->c)
+        }
+        else if (this->q >= this->c)
         {
             this->q = this->c;
         }
 
-        charge_msg.data = this->q;
-        charge_msg_mwh.data = this->q * 1000 * this->et;
+        charge = this->q;
     }
 
-    this->charge_state.publish(charge_msg);
-    this->charge_state_mwh.publish(charge_msg_mwh);
+    if (this->lastUpdateTime + this->updatePeriod < this->world->SimTime())
+    {
+        this->lastUpdateTime = this->world->SimTime();
+
+        this->batteryMsg.header.stamp.sec = this->lastUpdateTime.sec;
+        this->batteryMsg.header.stamp.nsec = this->lastUpdateTime.nsec;
+        this->batteryMsg.voltage = static_cast<float>(et);
+        this->batteryMsg.current = static_cast<float>(wasCharging ? this->qt : -this->ismooth);
+        this->batteryMsg.charge = static_cast<float>(charge);
+        this->batteryMsg.percentage = static_cast<float>(charge / this->c);
+        this->batteryMsg.power_supply_status = wasCharging ?
+                                               sensor_msgs::BatteryState::POWER_SUPPLY_STATUS_CHARGING :
+                                               sensor_msgs::BatteryState::POWER_SUPPLY_STATUS_DISCHARGING;
+
+        this->battery_state.publish(this->batteryMsg);
+
+        std_msgs::Float64 charge_msg_wh;
+        charge_msg_wh.data = charge * et;
+        this->charge_state_wh.publish(charge_msg_wh);
+    }
 
     return et;
 }
@@ -188,7 +239,8 @@ bool BatteryPlugin::SetCharging(gazebo_ros_battery::SetCharging::Request& req,
     if (req.charging)
     {
         gzdbg << "Battery is charging.\n";
-    } else
+    }
+    else
     {
         gzdbg << "Battery stopped charging.\n";
     }
@@ -217,7 +269,8 @@ bool BatteryPlugin::SetCharge(gazebo_ros_battery::SetCharge::Request& req,
     {
         this->q = req.charge;
         gzdbg << "Received charge:" << this->q << "\n";
-    } else
+    }
+    else
     {
         this->q = this->c;
         gzerr << "The charge cannot be higher than the capacity of the battery!\n";
