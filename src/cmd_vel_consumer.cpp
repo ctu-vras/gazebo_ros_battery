@@ -88,7 +88,7 @@ void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->cmd_vel_sub = this->rosNode->subscribe(
         "/" + this->model->GetName() + cmdVelTopic, 1, &CmdVelConsumerPlugin::OnCmdVelMsg, this);
 
-    gzlog << "cmd_vel consumer loaded\n";
+    gzmsg << "cmd_vel consumer loaded\n";
 }
 
 double CmdVelConsumerPlugin::CalculatePower(const geometry_msgs::Twist::ConstPtr& _msg)

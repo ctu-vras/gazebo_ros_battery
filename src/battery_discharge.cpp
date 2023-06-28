@@ -84,9 +84,7 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
     if (this->link->BatteryCount() > 0)
     {
-        // Creates the battery
         this->battery = this->link->Battery(batteryName);
-        gzlog << "Created battery" << batteryName << ".\n";
     }
     else
     {
@@ -128,7 +126,8 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->battery->SetUpdateFunc([this](const common::BatteryPtr& b)
                                  { return this->OnUpdateVoltage(b); });
 
-    gzlog << "BatteryPlugin Loaded.\n";
+    gzmsg << "Loaded battery '" << linkName << "/" << batteryName << "' (" << this->battery->Voltage() << " V, "
+          << this->c << " Ah).\n";
 }
 
 void BatteryPlugin::Init()

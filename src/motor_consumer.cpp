@@ -117,7 +117,25 @@ void MotorConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->motor_power_pub = this->rosNode->advertise<std_msgs::Float64>(consumerName, 1);
     this->joint_state_sub = this->rosNode->subscribe("joint_states", 1, &MotorConsumerPlugin::OnJointStateMsg, this);
 
-    gzlog << "motor consumer loaded\n";
+    std::string textJoints = "all joints";
+    if (this->joints.size() == 1)
+    {
+        textJoints = "joint " + this->joints.begin()->first;
+    }
+    else if (this->joints.size() > 1)
+    {
+        textJoints = "joints ";
+        size_t i = 0;
+        for (const auto& nameAndJoint : this->joints)
+        {
+            textJoints += nameAndJoint.first;
+            if (i < this->joints.size() - 1)
+                textJoints += ",";
+            ++i;
+        }
+    }
+    gzmsg << "Added motor consumer to battery '" << linkName << "/" << batteryName << "' that handles " << textJoints
+          << " on topic " << this->rosNode->resolveName(this->joint_state_sub.getTopic()) << ".\n";
 }
 
 double MotorConsumerPlugin::CalculatePower(const sensor_msgs::JointState::ConstPtr& _msg)

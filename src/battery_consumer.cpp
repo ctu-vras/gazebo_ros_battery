@@ -77,7 +77,6 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     const auto defaultConsumerName = _sdf->GetAttribute("name")->GetAsString();
     const auto consumerName = _sdf->Get<std::string>("consumer_name", defaultConsumerName).first;
 
-    // Add consumer and sets its power load
     this->powerLoad = _sdf->Get<double>("power_load");
     this->consumerId = this->battery->AddConsumer();
     this->battery->SetPowerLoad(this->consumerId, powerLoad);
@@ -87,7 +86,8 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->set_power_load = ros::NodeHandle(*this->rosNode, consumerName).advertiseService(
         "set_power_load", &BatteryConsumerPlugin::SetConsumerPowerLoad, this);
 
-    gzlog << "consumer loaded\n";
+    gzmsg << "Added constant consumer to battery '" << linkName << "/" << batteryName << "' with power load "
+          << this->powerLoad << " W.\n";
 }
 
 bool BatteryConsumerPlugin::SetConsumerPowerLoad(gazebo_ros_battery::SetLoad::Request& req,
