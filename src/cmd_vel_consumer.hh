@@ -21,8 +21,6 @@
 #include <geometry_msgs/Twist.h>
 #include <ros/ros.h>
 
-#include <gazebo_ros_battery/SetLoad.h>
-
 namespace gazebo
 {
 

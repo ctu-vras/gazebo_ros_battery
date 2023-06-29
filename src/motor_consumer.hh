@@ -20,8 +20,6 @@
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
 
-#include <gazebo_ros_battery/SetLoad.h>
-
 namespace gazebo
 {
 

@@ -15,8 +15,11 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_dev
   gazebo_plugins
   gazebo_ros
+  geometry_msgs
   message_generation
   roscpp
+  sensor_msgs
+  std_msgs
 )
 
 add_service_files(FILES
@@ -55,7 +58,12 @@ add_library(gazebo_ros_mechanical_energy_battery_consumer SHARED src/mechanical_
 add_dependencies(gazebo_ros_mechanical_energy_battery_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(gazebo_ros_mechanical_energy_battery_consumer ${catkin_LIBRARIES})
 
-install(TARGETS ${PROJECT_NAME}_consumer ${PROJECT_NAME}_discharge gazebo_ros_cmd_vel_battery_consumer gazebo_ros_motor_battery_consumer gazebo_ros_mechanical_energy_battery_consumer
+install(TARGETS
+  ${PROJECT_NAME}_consumer
+  ${PROJECT_NAME}_discharge
+  gazebo_ros_cmd_vel_battery_consumer
+  gazebo_ros_motor_battery_consumer
+  gazebo_ros_mechanical_energy_battery_consumer
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
