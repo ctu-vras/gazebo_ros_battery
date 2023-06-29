@@ -16,25 +16,12 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_plugins
   gazebo_ros
   geometry_msgs
-  message_generation
   roscpp
   sensor_msgs
   std_msgs
 )
 
-add_service_files(FILES
-  SetCharge.srv
-  SetCharging.srv
-  SetChargingRate.srv
-  SetCoef.srv
-  SetLoad.srv
-)
-
-generate_messages()
-
-catkin_package(
-  CATKIN_DEPENDS message_runtime
-)
+catkin_package()
 
 include_directories(${catkin_INCLUDE_DIRS})
 

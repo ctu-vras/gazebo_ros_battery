@@ -6,11 +6,11 @@
 // - renamed to gazebo_ros_battery
 // - cleaned up the code
 // - changed to publish BatteryState message
+// - removed the services
 
 #include "battery_discharge.hh"
 
 #include <memory>
-#include <mutex>
 #include <string>
 
 #include <gazebo/common/common.hh>
@@ -61,22 +61,17 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->battery_state = this->rosNode->advertise<sensor_msgs::BatteryState>("battery_state", 1);
     this->charge_state_wh = this->rosNode->advertise<std_msgs::Float64>("charge_level_wh", 1);
 
-    this->set_charging = this->rosNode->advertiseService("set_charging", &BatteryPlugin::SetCharging, this);
-    this->set_charging_rate = this->rosNode->advertiseService("set_charge_rate", &BatteryPlugin::SetChargingRate, this);
-    this->set_charge = this->rosNode->advertiseService("set_charge", &BatteryPlugin::SetCharge, this);
-    this->set_coefficients = this->rosNode->advertiseService(
-        "set_model_coefficients", &BatteryPlugin::SetModelCoefficients, this);
-
     const auto linkName = _sdf->Get<std::string>("link_name");
     this->link = this->model->GetLink(linkName);
 
-    this->updatePeriod = 1.0 / _sdf->Get<double>("update_rate", 1.0).first;
+    this->allowCharging = _sdf->Get<bool>("allow_charging", this->allowCharging).first;
+
+    this->updatePeriod = 1.0 / _sdf->Get<double>("update_rate", this->updatePeriod).first;
     this->e0 = _sdf->Get<double>("constant_coef");
     this->e1 = _sdf->Get<double>("linear_coef");
     this->q0 = _sdf->Get<double>("initial_charge");
-    this->qt = _sdf->Get<double>("charge_rate");
     this->c = _sdf->Get<double>("capacity");
-    const auto designCapacity = _sdf->Get<double>("capacity", this->c).first;
+    const auto designCapacity = _sdf->Get<double>("design_capacity", this->c).first;
     this->r = _sdf->Get<double>("resistance");
     this->tau = _sdf->Get<double>("smooth_current_tau");
 
@@ -133,13 +128,12 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 void BatteryPlugin::Init()
 {
     this->q = this->q0;
-    this->charging = false;
 }
 
 void BatteryPlugin::Reset()
 {
-    this->iraw = 0.0;
     this->ismooth = 0.0;
+    this->lastUpdateTime = common::Time::Zero;
     this->Init();
 }
 
@@ -151,57 +145,45 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
     double k = dt / this->tau;
 
     for (auto powerLoad : _battery->PowerLoads())
-        totalpower += powerLoad.second;
+    {
+        if (powerLoad.second >= 0 || this->allowCharging)
+            totalpower += powerLoad.second;
+    }
 
     // current = power(Watts)/Voltage
-    this->iraw = totalpower / _battery->Voltage();
+    const auto iraw = totalpower / _battery->Voltage();  // Raw battery current in A.
 
-    this->ismooth = this->ismooth + k * (this->iraw - this->ismooth);
+    this->ismooth = this->ismooth + k * (iraw - this->ismooth);
 
-    double et;  // Voltage on terminal
-    double charge;
-    bool wasCharging;
+    this->q = (std::max)(0.0, this->q - GZ_SEC_TO_HOUR(dt * this->ismooth));
+
+#ifdef BATTERY_DEBUG
+    gzdbg << "Current charge:" << this->charge << ", at:" << this->sim_time_now << "\n";
+#endif
+
+    // Voltage on terminal
+    double et = this->e0 + this->e1 * (1 - this->q / this->c) - this->r * this->ismooth;
+    // In case the battery is charging (ismooth is negative), we don't want the voltage to go over the maximum
+    et = (std::min)(et, this->e0);
+
+#ifdef BATTERY_DEBUG
+    gzdbg << "Current voltage:" << this->et << ", at:" << this->sim_time_now << "\n";
+#endif
+
+    // Turn off the motor
+    if (this->q <= 0)
     {
-        std::lock_guard<std::mutex> l(this->lock);
+        et = 0;
 
-        wasCharging = this->charging;
-
-        if (!this->charging)
-        {
-            this->q = this->q - GZ_SEC_TO_HOUR(dt * this->ismooth);
-        }
-        else
-        {
-            this->q = this->q + GZ_SEC_TO_HOUR(dt * this->qt);
-        }
+        // TODO figure out how to turn off the robot
 
 #ifdef BATTERY_DEBUG
-        gzdbg << "Current charge:" << this->charge << ", at:" << this->sim_time_now << "\n";
+        gzdbg << "Out of juice at:" << this->world->SimTime() << "\n";
 #endif
-
-        et = this->e0 + this->e1 * (1 - this->q / this->c) - this->r * this->ismooth;
-
-#ifdef BATTERY_DEBUG
-        gzdbg << "Current voltage:" << this->et << ", at:" << this->sim_time_now << "\n";
-#endif
-
-        // Turn off the motor
-        if (this->q <= 0)
-        {
-            et = 0;
-
-            // TODO figure out how to turn off the robot
-
-#ifdef BATTERY_DEBUG
-            gzdbg << "Out of juice at:" << this->world->SimTime() << "\n";
-#endif
-        }
-        else if (this->q >= this->c)
-        {
-            this->q = this->c;
-        }
-
-        charge = this->q;
+    }
+    else if (this->q >= this->c)
+    {
+        this->q = this->c;
     }
 
     if (this->lastUpdateTime + this->updatePeriod < this->world->SimTime())
@@ -211,83 +193,22 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
         this->batteryMsg.header.stamp.sec = this->lastUpdateTime.sec;
         this->batteryMsg.header.stamp.nsec = this->lastUpdateTime.nsec;
         this->batteryMsg.voltage = static_cast<float>(et);
-        this->batteryMsg.current = static_cast<float>(wasCharging ? this->qt : -this->ismooth);
-        this->batteryMsg.charge = static_cast<float>(charge);
-        this->batteryMsg.percentage = static_cast<float>(charge / this->c);
-        this->batteryMsg.power_supply_status = wasCharging ?
-                                               sensor_msgs::BatteryState::POWER_SUPPLY_STATUS_CHARGING :
-                                               sensor_msgs::BatteryState::POWER_SUPPLY_STATUS_DISCHARGING;
+        this->batteryMsg.current = static_cast<float>(-this->ismooth);
+        this->batteryMsg.charge = static_cast<float>(this->q);
+        this->batteryMsg.percentage = static_cast<float>(this->q / this->c);
+        if (this->q == this->c)
+            this->batteryMsg.power_supply_status = sensor_msgs::BatteryState::POWER_SUPPLY_STATUS_FULL;
+        else if (this->ismooth >= 0)
+            this->batteryMsg.power_supply_status = sensor_msgs::BatteryState::POWER_SUPPLY_STATUS_DISCHARGING;
+        else
+            this->batteryMsg.power_supply_status = sensor_msgs::BatteryState::POWER_SUPPLY_STATUS_CHARGING;
 
         this->battery_state.publish(this->batteryMsg);
 
         std_msgs::Float64 charge_msg_wh;
-        charge_msg_wh.data = charge * et;
+        charge_msg_wh.data = this->q * et;
         this->charge_state_wh.publish(charge_msg_wh);
     }
 
     return et;
-}
-
-bool BatteryPlugin::SetCharging(gazebo_ros_battery::SetCharging::Request& req,
-                                gazebo_ros_battery::SetCharging::Response& res)
-{
-    {
-        std::lock_guard<std::mutex> l(this->lock);
-        this->charging = req.charging;
-    }
-    if (req.charging)
-    {
-        gzdbg << "Battery is charging.\n";
-    }
-    else
-    {
-        gzdbg << "Battery stopped charging.\n";
-    }
-    res.result = true;
-    return true;
-}
-
-bool BatteryPlugin::SetChargingRate(gazebo_ros_battery::SetChargingRate::Request& req,
-                                    gazebo_ros_battery::SetChargingRate::Response& res)
-{
-    {
-        std::lock_guard<std::mutex> l(this->lock);
-        this->qt = req.charge_rate;
-    }
-    gzdbg << "Charging rate has been changed to: " << req.charge_rate << "\n";
-    res.result = true;
-    return true;
-}
-
-
-bool BatteryPlugin::SetCharge(gazebo_ros_battery::SetCharge::Request& req,
-                              gazebo_ros_battery::SetCharge::Response& res)
-{
-    std::lock_guard<std::mutex> l(this->lock);
-    if (req.charge <= this->c)
-    {
-        this->q = req.charge;
-        gzdbg << "Received charge:" << this->q << "\n";
-    }
-    else
-    {
-        this->q = this->c;
-        gzerr << "The charge cannot be higher than the capacity of the battery!\n";
-    }
-    res.result = true;
-    return true;
-}
-
-bool BatteryPlugin::SetModelCoefficients(gazebo_ros_battery::SetCoef::Request& req,
-                                         gazebo_ros_battery::SetCoef::Response& res)
-{
-    {
-        std::lock_guard<std::mutex> l(this->lock);
-        this->e0 = req.constant_coef;
-        this->e1 = req.linear_coef;
-    }
-    gzdbg << "Power model is changed, new coefficients (constant, linear):" << req.constant_coef
-          << req.linear_coef << "\n";
-    res.result = true;
-    return true;
 }

@@ -1,7 +1,0 @@
-# SPDX-License-Identifier: MIT
-# SPDX-FileCopyrightText: pooyanjamshidi
-
-float64 constant_coef
-float64 linear_coef
----
-bool result

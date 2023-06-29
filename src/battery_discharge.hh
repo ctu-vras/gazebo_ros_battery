@@ -7,9 +7,10 @@
 // Original file from https://github.com/rosin-project/brass_gazebo_battery edited by Martin Pecka:
 // - renamed to gazebo_ros_battery
 // - cleaned up the code
+// - changed to publish BatteryState message
+// - removed the services
 
 #include <memory>
-#include <mutex>
 #include <string>
 
 #include <gazebo/common/common.hh>
@@ -18,11 +19,6 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/BatteryState.h>
-
-#include <gazebo_ros_battery/SetCharge.h>
-#include <gazebo_ros_battery/SetCharging.h>
-#include <gazebo_ros_battery/SetCoef.h>
-#include <gazebo_ros_battery/SetChargingRate.h>
 
 namespace gazebo
 {
@@ -45,19 +41,6 @@ public:
 private:
     double OnUpdateVoltage(const common::BatteryPtr& _battery);
 
-public:
-    bool SetCharging(gazebo_ros_battery::SetCharging::Request& req,
-                     gazebo_ros_battery::SetCharging::Response& res);
-
-    bool SetCharge(gazebo_ros_battery::SetCharge::Request& req,
-                   gazebo_ros_battery::SetCharge::Response& res);
-
-    bool SetModelCoefficients(gazebo_ros_battery::SetCoef::Request& req,
-                              gazebo_ros_battery::SetCoef::Response& res);
-
-    bool SetChargingRate(gazebo_ros_battery::SetChargingRate::Request& req,
-                         gazebo_ros_battery::SetChargingRate::Response& res);
-
 protected:
     event::ConnectionPtr updateConnection;
     physics::WorldPtr world;
@@ -68,6 +51,7 @@ protected:
     sdf::ElementPtr sdf;
     common::Time lastUpdateTime;
     double updatePeriod {1.0};
+    bool allowCharging {true};
 
     // E(t) = e0 + e1* Q(t)/c
     double e0 {0.0};
@@ -75,15 +59,11 @@ protected:
 
     double q0 {0.0};  //!< Initial battery charge in Ah.
 
-    double qt {0.0};  //!< Charge rate in A
-
     double c {0.0};  //!< Battery capacity in Ah.
 
     double r {0.0};  //!< Battery inner resistance in Ohm
 
     double tau {0.0};  //!< Current low-pass filter characteristic time in seconds.
-
-    double iraw {0.0};  //!< Raw battery current in A.
 
     double ismooth {0.0};  //!< Smoothed battery current in A.
 
@@ -94,16 +74,7 @@ protected:
 
     ros::Publisher battery_state;
     ros::Publisher charge_state_wh;
-    ros::Publisher motor_power;
 
-    ros::ServiceServer set_charging;
-    ros::ServiceServer set_charge;
-    ros::ServiceServer set_coefficients;
-    ros::ServiceServer set_charging_rate;
-
-    std::mutex lock;
-
-    bool charging {false};
     sensor_msgs::BatteryState batteryMsg;
 };
 }

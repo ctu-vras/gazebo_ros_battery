@@ -6,6 +6,7 @@
 // - renamed to gazebo_ros_battery
 // - cleaned up the code
 // - renamed a few SDF parameters
+// - changed the SetLoad service to a topic
 
 #include "battery_consumer.hh"
 
@@ -18,6 +19,7 @@
 #include <sdf/sdf.hh>
 
 #include <ros/ros.h>
+#include <std_msgs/Float64.h>
 
 // #define CONSUMER_DEBUG
 
@@ -83,24 +85,20 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
     this->rosNode = std::make_unique<ros::NodeHandle>(robotNamespace);
 
-    this->set_power_load = ros::NodeHandle(*this->rosNode, consumerName).advertiseService(
-        "set_power_load", &BatteryConsumerPlugin::SetConsumerPowerLoad, this);
+    this->power_load_sub = ros::NodeHandle(*this->rosNode, consumerName).subscribe(
+        "power_load_cmd", 1, &BatteryConsumerPlugin::OnPowerLoadCmd, this);
 
     gzmsg << "Added constant consumer to battery '" << linkName << "/" << batteryName << "' with power load "
           << this->powerLoad << " W.\n";
 }
 
-bool BatteryConsumerPlugin::SetConsumerPowerLoad(gazebo_ros_battery::SetLoad::Request& req,
-                                                 gazebo_ros_battery::SetLoad::Response& res)
+void BatteryConsumerPlugin::OnPowerLoadCmd(const std_msgs::Float64& _msg)
 {
     const auto load = this->powerLoad;
-    this->powerLoad = req.power_load;
-    this->battery->SetPowerLoad(this->consumerId, req.power_load);
+    this->powerLoad = _msg.data;
+    this->battery->SetPowerLoad(this->consumerId, _msg.data);
 
 #ifdef CONSUMER_DEBUG
     gzdbg << "Power load of consumer has changed from:" << load << ", to:" << req.power_load << "\n";
 #endif
-
-    res.result = true;
-    return true;
 }

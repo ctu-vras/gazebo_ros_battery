@@ -16,8 +16,7 @@
 #include <sdf/sdf.hh>
 
 #include <ros/ros.h>
-
-#include <gazebo_ros_battery/SetLoad.h>
+#include <std_msgs/Float64.h>
 
 namespace gazebo
 {
@@ -31,8 +30,7 @@ public:
 
     void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) override;
 
-    bool SetConsumerPowerLoad(gazebo_ros_battery::SetLoad::Request& req,
-                              gazebo_ros_battery::SetLoad::Response& res);
+    void OnPowerLoadCmd(const std_msgs::Float64& _msg);
 
 protected:
     event::ConnectionPtr updateConnection;
@@ -51,6 +49,6 @@ protected:
 
     std::unique_ptr<ros::NodeHandle> rosNode;
 
-    ros::ServiceServer set_power_load;
+    ros::Subscriber power_load_sub;
 };
 }
