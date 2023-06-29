@@ -53,13 +53,13 @@ protected:
 
     msgs::Twist powerLoadRates;  //!< Consumer parameter.
     double consumerIdlePower {0.0};  //!< Consumer parameter.
-    double commandDuration {0.1}; //!< For how long a velocity command is valid.
+    double commandDuration {0.1};  //!< For how long a velocity command is valid.
 
 private:
     common::BatteryPtr battery;
 
     uint32_t consumerId {std::numeric_limits<uint32_t>::max()};  //!< Consumer identifier.
-    
+
     common::Time lastCmdTime;
 
 protected:

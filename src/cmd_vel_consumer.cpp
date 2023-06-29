@@ -71,7 +71,7 @@ void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->powerLoadRates.mutable_angular()->set_x(_sdf->Get<double>("power_load_rate_roll", 0.0).first);
     this->powerLoadRates.mutable_angular()->set_y(_sdf->Get<double>("power_load_rate_pitch", 0.0).first);
     this->powerLoadRates.mutable_angular()->set_z(_sdf->Get<double>("power_load_rate_yaw", 0.0).first);
-    
+
     this->consumerIdlePower = _sdf->Get<double>("consumer_idle_power");
     if (this->consumerIdlePower < 0)
     {
@@ -80,7 +80,7 @@ void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     }
 
     this->commandDuration = _sdf->Get<double>("command_duration", this->commandDuration).first;
-    
+
     this->link = _model->GetLink(linkName);
     if (!this->link)
     {
@@ -181,6 +181,6 @@ void CmdVelConsumerPlugin::OnCmdVelMsg(const geometry_msgs::Twist& _msg)
 void CmdVelConsumerPlugin::OnUpdate(const common::UpdateInfo&)
 {
     // Zero out the command if none was recently received
-    if (this->lastCmdTime + this->commandDuration < this->world->SimTime())
+    if (this->lastCmdTime + this->commandDuration <= this->world->SimTime())
         this->OnCmdVelMsg(geometry_msgs::Twist());
 }
