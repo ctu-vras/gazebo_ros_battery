@@ -184,6 +184,8 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
     else if (this->q >= this->c)
     {
         this->q = this->c;
+        // If the battery is charging and full, do not let any other charging current in
+        this->ismooth = (std::max)(0.0, this->ismooth);
     }
 
     if (this->lastUpdateTime + this->updatePeriod < this->world->SimTime())
