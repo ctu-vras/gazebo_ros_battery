@@ -48,13 +48,9 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->model = _model;
     this->world = _model->GetWorld();
 
-    auto robotNamespace = _model->GetName();
+    std::string robotNamespace;
     if (_sdf->HasElement("robotNamespace"))
-    {
-        robotNamespace = _sdf->GetElement("robotNamespace")->Get<std::string>();
-        if (robotNamespace.empty()) robotNamespace = _model->GetName();
-    }
-    if (!robotNamespace.empty()) robotNamespace += "/";
+        robotNamespace = _sdf->GetElement("robotNamespace")->Get<std::string>() + "/";
 
     this->rosNode = std::make_unique<ros::NodeHandle>(robotNamespace);
 
