@@ -7,10 +7,10 @@
 // - cleaned up the code
 // - added the ability to subscribe also to Gazebo topics
 // - reworked the total power computation
+// - extracted base class BatteryConsumerBase
 
 #include "cmd_vel_consumer.hh"
 
-#include <limits>
 #include <memory>
 #include <string>
 
@@ -33,33 +33,9 @@ GZ_REGISTER_MODEL_PLUGIN(CmdVelConsumerPlugin);
 
 CmdVelConsumerPlugin::CmdVelConsumerPlugin() = default;
 
-CmdVelConsumerPlugin::~CmdVelConsumerPlugin()
-{
-    if (this->battery && this->consumerId != std::numeric_limits<uint32_t>::max())
-        this->battery->RemoveConsumer(this->consumerId);
-    if (this->rosNode)
-        this->rosNode->shutdown();
-}
-
 void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
-    if (!ros::isInitialized())
-    {
-        ROS_FATAL_STREAM_NAMED("cmd_vel_consumer", "A ROS node for Gazebo has not been initialized, "
-                                                   "unable to load plugin. Load the Gazebo system plugin "
-                                                   "'libgazebo_ros_api_plugin.so' in the gazebo_ros package.");
-        return;
-    }
-
-    this->model = _model;
-    this->world = _model->GetWorld();
-
-    std::string robotNamespace;
-    if (_sdf->HasElement("robotNamespace"))
-        robotNamespace = _sdf->GetElement("robotNamespace")->Get<std::string>() + "/";
-
-    const auto linkName = _sdf->Get<std::string>("link_name");
-    const auto batteryName = _sdf->Get<std::string>("battery_name");
+    BatteryConsumerBase::Load(_model, _sdf);
 
     this->powerLoadRates.mutable_linear()->set_x(_sdf->Get<double>("power_load_rate_x", 0.0).first);
     this->powerLoadRates.mutable_linear()->set_y(_sdf->Get<double>("power_load_rate_y", 0.0).first);
@@ -77,21 +53,6 @@ void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
     this->commandDuration = _sdf->Get<double>("command_duration", this->commandDuration).first;
 
-    this->link = _model->GetLink(linkName);
-    if (!this->link)
-    {
-        gzerr << "Cannot find a link with name '" << linkName << "'.\n";
-        return;
-    }
-    this->battery = this->link->Battery(batteryName);
-    if (!this->battery)
-    {
-        gzerr << "Cannot find a battery '" << batteryName << "' in link '" << linkName << "'. Make sure the "
-              << "battery_name specified in the plugin can be found in the specified link.\n";
-        return;
-    }
-
-    this->consumerId = this->battery->AddConsumer();
     this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
 
     const auto gz_pose_topic = _sdf->Get<std::string>("gz_pose_topic", "").first;
@@ -110,12 +71,7 @@ void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
         this->gz_twist_sub = this->gzNode->Subscribe<msgs::Twist>(
             gz_twist_topic, &CmdVelConsumerPlugin::OnGzTwistMsg, this);
 
-    const auto pluginName = _sdf->GetAttribute("name")->GetAsString();
-    const auto defaultConsumerName = pluginName + "/cmd_vel_power";
-    const auto consumerName = _sdf->Get<std::string>("consumer_name", defaultConsumerName).first;
-
-    this->rosNode = std::make_unique<ros::NodeHandle>(robotNamespace);
-    this->cmd_vel_power_pub = this->rosNode->advertise<std_msgs::Float64>(consumerName, 1);
+    this->cmd_vel_power_pub = this->consumerNode->advertise<std_msgs::Float64>("cmd_vel_power", 1);
 
     const auto cmdVelTopic = _sdf->Get<std::string>("ros_cmd_vel_topic", "").first;
     if (!cmdVelTopic.empty())
@@ -124,7 +80,8 @@ void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->beforePhysicsUpdateConnection = event::Events::ConnectBeforePhysicsUpdate(
         std::bind(&CmdVelConsumerPlugin::OnUpdate, this, std::placeholders::_1));
 
-    gzmsg << "cmd_vel consumer loaded\n";
+    gzmsg << "Added cmd_vel consumer '" << this->consumerName << "' to battery '"
+          << this->link->GetName() << "/" << this->battery->Name() << ".\n";
 }
 
 double CmdVelConsumerPlugin::CalculatePower(const geometry_msgs::Twist& _msg)
@@ -184,5 +141,6 @@ void CmdVelConsumerPlugin::OnUpdate(const common::UpdateInfo&)
 void CmdVelConsumerPlugin::Reset()
 {
     this->OnCmdVelMsg(geometry_msgs::Twist());
-    gzdbg << "Cmd_vel consumer on battery '" << this->battery->Name() << "' was reset.\n";
+    gzdbg << "Cmd_vel consumer '" << this->consumerName << "' on battery '"
+          << this->link->GetName() << "/" << this->battery->Name() << "' was reset.\n";
 }

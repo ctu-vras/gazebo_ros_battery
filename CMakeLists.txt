@@ -12,47 +12,60 @@ project(gazebo_ros_battery)
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(catkin REQUIRED COMPONENTS
-  gazebo_dev
-  gazebo_plugins
-  gazebo_ros
-  geometry_msgs
-  roscpp
-  sensor_msgs
-  std_msgs
+    gazebo_dev
+    gazebo_plugins
+    gazebo_ros
+    geometry_msgs
+    roscpp
+    sensor_msgs
+    std_msgs
 )
 
-catkin_package()
+catkin_package(
+    CATKIN_DEPENDS gazebo_dev roscpp
+    INCLUDE_DIRS include
+    LIBRARIES ${PROJECT_NAME}_consumer_base
+)
 
-include_directories(${catkin_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_library(${PROJECT_NAME}_discharge SHARED src/battery_discharge.cpp)
 add_dependencies(${PROJECT_NAME}_discharge ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(${PROJECT_NAME}_discharge ${catkin_LIBRARIES})
 
+add_library(${PROJECT_NAME}_consumer_base SHARED src/battery_consumer_base.cpp)
+add_dependencies(${PROJECT_NAME}_consumer_base ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(${PROJECT_NAME}_consumer_base ${catkin_LIBRARIES})
+
 add_library(${PROJECT_NAME}_consumer SHARED src/battery_consumer.cpp)
 add_dependencies(${PROJECT_NAME}_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME}_consumer ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_consumer ${PROJECT_NAME}_consumer_base ${catkin_LIBRARIES})
 
 add_library(gazebo_ros_cmd_vel_battery_consumer SHARED src/cmd_vel_consumer.cpp)
 add_dependencies(gazebo_ros_cmd_vel_battery_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(gazebo_ros_cmd_vel_battery_consumer ${catkin_LIBRARIES})
+target_link_libraries(gazebo_ros_cmd_vel_battery_consumer ${PROJECT_NAME}_consumer_base ${catkin_LIBRARIES})
 
 add_library(gazebo_ros_motor_battery_consumer SHARED src/motor_consumer.cpp)
 add_dependencies(gazebo_ros_motor_battery_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(gazebo_ros_motor_battery_consumer ${catkin_LIBRARIES})
+target_link_libraries(gazebo_ros_motor_battery_consumer ${PROJECT_NAME}_consumer_base ${catkin_LIBRARIES})
 
 add_library(gazebo_ros_mechanical_energy_battery_consumer SHARED src/mechanical_energy_consumer.cpp)
 add_dependencies(gazebo_ros_mechanical_energy_battery_consumer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(gazebo_ros_mechanical_energy_battery_consumer ${catkin_LIBRARIES})
+target_link_libraries(gazebo_ros_mechanical_energy_battery_consumer ${PROJECT_NAME}_consumer_base ${catkin_LIBRARIES})
+
+install(DIRECTORY include/${PROJECT_NAME}/
+    DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+)
 
 install(TARGETS
-  ${PROJECT_NAME}_consumer
-  ${PROJECT_NAME}_discharge
-  gazebo_ros_cmd_vel_battery_consumer
-  gazebo_ros_motor_battery_consumer
-  gazebo_ros_mechanical_energy_battery_consumer
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+    ${PROJECT_NAME}_consumer
+    ${PROJECT_NAME}_consumer_base
+    ${PROJECT_NAME}_discharge
+    gazebo_ros_cmd_vel_battery_consumer
+    gazebo_ros_mechanical_energy_battery_consumer
+    gazebo_ros_motor_battery_consumer
+    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    ARCHIVE DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 if (CATKIN_ENABLE_TESTING)
@@ -76,7 +89,7 @@ if (CATKIN_ENABLE_TESTING)
     endif()
 
     # Roslint C++ - checks formatting and some other rules for C++ files
-    file(GLOB_RECURSE ROSLINT_SRC src/*.cpp src/*.hh)
+    file(GLOB_RECURSE ROSLINT_SRC include/${PROJECT_NAME}/*.hh src/*.cpp src/*.hh)
 
     set(ROSLINT_CPP_OPTS "--extensions=h,hpp,hh,c,cpp,cc;--linelength=120;--filter=\
     -build/header_guard,-readability/namespace,-whitespace/braces,-runtime/references,\

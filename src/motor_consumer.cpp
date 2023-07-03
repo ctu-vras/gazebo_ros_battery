@@ -5,6 +5,7 @@
 // Original file from https://github.com/tmxkn1/brass_gazebo_battery edited by Martin Pecka:
 // - renamed to gazebo_ros_battery
 // - cleaned up the code
+// - extracted base class BatteryConsumerBase
 
 #include "motor_consumer.hh"
 
@@ -29,57 +30,21 @@ GZ_REGISTER_MODEL_PLUGIN(MotorConsumerPlugin);
 
 MotorConsumerPlugin::MotorConsumerPlugin() = default;
 
-MotorConsumerPlugin::~MotorConsumerPlugin()
-{
-    if (this->battery && this->consumerId != std::numeric_limits<uint32_t>::max())
-        this->battery->RemoveConsumer(this->consumerId);
-    if (this->rosNode)
-        this->rosNode->shutdown();
-}
-
 void MotorConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
-    if (!ros::isInitialized())
-    {
-        ROS_FATAL_STREAM_NAMED("motor_consumer", "A ROS node for Gazebo has not been initialized, "
-                                                 "unable to load plugin. Load the Gazebo system plugin "
-                                                 "'libgazebo_ros_api_plugin.so' in the gazebo_ros package.");
-        return;
-    }
+    BatteryConsumerBase::Load(_model, _sdf);
 
-    this->model = _model;
-    this->world = _model->GetWorld();
-
-    std::string robotNamespace;
-    if (_sdf->HasElement("robotNamespace"))
-        robotNamespace = _sdf->GetElement("robotNamespace")->Get<std::string>() + "/";
-
-    const auto linkName = _sdf->Get<std::string>("link_name");
-    const auto batteryName = _sdf->Get<std::string>("battery_name");
     this->efficiency = _sdf->Get<double>("efficiency", this->efficiency).first;
-    this->consumerIdlePower = _sdf->Get<double>("consumer_idle_power", this->consumerIdlePower).first;
     if (this->efficiency < 0 || this->efficiency > 1)
     {
         gzerr << "efficiency must be between 0 and 1 (inclusive).\n";
         return;
     }
+
+    this->consumerIdlePower = _sdf->Get<double>("consumer_idle_power", this->consumerIdlePower).first;
     if (this->consumerIdlePower < 0)
     {
         gzerr << "consumer_idle_power cannot be negative.\n";
-        return;
-    }
-
-    this->link = _model->GetLink(linkName);
-    if (!this->link)
-    {
-        gzerr << "Cannot find link with name '" << linkName << "'.\n";
-        return;
-    }
-    this->battery = this->link->Battery(batteryName);
-    if (!this->battery)
-    {
-        gzerr << "Cannot find a battery '" << batteryName << "' in link '" << linkName << "'. Make sure the "
-              << "battery_name specified in the plugin can be found in the specified link.\n";
         return;
     }
 
@@ -102,15 +67,9 @@ void MotorConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
         }
     }
 
-    const auto pluginName = _sdf->GetAttribute("name")->GetAsString();
-    const auto defaultConsumerName = (this->joints.empty() ? pluginName : this->joints.begin()->first) + "/motor_power";
-    const auto consumerName = _sdf->Get<std::string>("consumer_name", defaultConsumerName).first;
-
-    this->consumerId = this->battery->AddConsumer();
     this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
 
-    this->rosNode = std::make_unique<ros::NodeHandle>(robotNamespace);
-    this->motor_power_pub = this->rosNode->advertise<std_msgs::Float64>(consumerName, 1);
+    this->motor_power_pub = this->rosNode->advertise<std_msgs::Float64>(this->consumerName, 1);
     this->joint_state_sub = this->rosNode->subscribe("joint_states", 1, &MotorConsumerPlugin::OnJointStateMsg, this);
 
     std::string textJoints = "all joints";
@@ -130,7 +89,8 @@ void MotorConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
             ++i;
         }
     }
-    gzmsg << "Added motor consumer to battery '" << linkName << "/" << batteryName << "' that handles " << textJoints
+    gzmsg << "Added motor consumer '" << this->consumerName << "' to battery '"
+          << this->link->GetName() << "/" << this->battery->Name() << "' that handles " << textJoints
           << " on topic " << this->rosNode->resolveName(this->joint_state_sub.getTopic()) << ".\n";
 }
 
@@ -175,5 +135,6 @@ void MotorConsumerPlugin::Reset()
     std_msgs::Float64 motor_power_msg;
     motor_power_msg.data = this->consumerIdlePower;
     this->motor_power_pub.publish(motor_power_msg);
-    gzdbg << "Motor consumer on battery '" << this->battery->Name() << "' was reset.\n";
+    gzdbg << "Motor consumer '" << this->consumerName << "' on battery '"
+          << this->link->GetName() << "/" << this->battery->Name() << "' was reset.\n";
 }

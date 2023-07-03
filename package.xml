@@ -22,19 +22,18 @@ Original file from https://github.com/tmxkn1/brass_gazebo_battery edited by Mart
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <build_depend>gazebo_dev</build_depend>
+  <depend>gazebo_dev</depend>
+  <depend>roscpp</depend>
+
   <build_depend>gazebo_plugins</build_depend>
   <build_depend>gazebo_ros</build_depend>
   <build_depend>geometry_msgs</build_depend>
-  <build_depend>roscpp</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>std_msgs</build_depend>
 
-  <exec_depend>gazebo_dev</exec_depend>
   <exec_depend>gazebo_plugins</exec_depend>
   <exec_depend>gazebo_ros</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>roscpp</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
 
