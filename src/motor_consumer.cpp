@@ -168,3 +168,12 @@ void MotorConsumerPlugin::OnJointStateMsg(const sensor_msgs::JointState::ConstPt
     motor_power_msg.data = motor_power;
     this->motor_power_pub.publish(motor_power_msg);
 }
+
+void MotorConsumerPlugin::Reset()
+{
+    this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
+    std_msgs::Float64 motor_power_msg;
+    motor_power_msg.data = this->consumerIdlePower;
+    this->motor_power_pub.publish(motor_power_msg);
+    gzdbg << "Motor consumer on battery '" << this->battery->Name() << "' was reset.\n";
+}

@@ -32,6 +32,8 @@ public:
 
     void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) override;
 
+    void Reset() override;
+
     void OnJointStateMsg(const sensor_msgs::JointState::ConstPtr& _msg);
 
 private:

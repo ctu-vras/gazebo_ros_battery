@@ -24,6 +24,8 @@ public:
 
     void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) override;
 
+    void Reset() override;
+
     void OnUpdate(const common::UpdateInfo& _info);
 
 protected:

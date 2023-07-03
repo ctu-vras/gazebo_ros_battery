@@ -120,7 +120,7 @@ void MechanicalEnergyConsumerPlugin::OnUpdate(const common::UpdateInfo& info)
     const auto load = (std::max)(totalPower, this->consumerIdlePower);
     this->battery->SetPowerLoad(this->consumerId, load);
 
-    this->consumedCharge += totalPower * dt;
+    this->consumedCharge += load * dt;
 
     if (this->lastPublishTime + this->publishInterval <= info.simTime)
     {
@@ -130,4 +130,16 @@ void MechanicalEnergyConsumerPlugin::OnUpdate(const common::UpdateInfo& info)
         this->lastPublishTime = info.simTime;
         this->consumedCharge = 0.0;
     }
+}
+
+void MechanicalEnergyConsumerPlugin::Reset()
+{
+    this->lastEnergy = 0.0;
+    this->lastUpdateTime = this->lastPublishTime = common::Time::Zero;
+    this->consumedCharge = 0.0;
+    this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
+    std_msgs::Float64 power_msg;
+    power_msg.data = this->consumerIdlePower;
+    this->power_pub.publish(power_msg);
+    gzdbg << "Mechanical energy consumer on battery '" << this->battery->Name() << "' was reset.\n";
 }

@@ -180,3 +180,9 @@ void CmdVelConsumerPlugin::OnUpdate(const common::UpdateInfo&)
     if (this->lastCmdTime + this->commandDuration <= this->world->SimTime())
         this->OnCmdVelMsg(geometry_msgs::Twist());
 }
+
+void CmdVelConsumerPlugin::Reset()
+{
+    this->OnCmdVelMsg(geometry_msgs::Twist());
+    gzdbg << "Cmd_vel consumer on battery '" << this->battery->Name() << "' was reset.\n";
+}

@@ -75,7 +75,7 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     const auto defaultConsumerName = _sdf->GetAttribute("name")->GetAsString();
     const auto consumerName = _sdf->Get<std::string>("consumer_name", defaultConsumerName).first;
 
-    this->powerLoad = _sdf->Get<double>("power_load");
+    this->powerLoad = this->initialPowerLoad = _sdf->Get<double>("power_load");
     this->consumerId = this->battery->AddConsumer();
     this->battery->SetPowerLoad(this->consumerId, powerLoad);
 
@@ -86,6 +86,14 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
     gzmsg << "Added constant consumer to battery '" << linkName << "/" << batteryName << "' with power load "
           << this->powerLoad << " W.\n";
+}
+
+void BatteryConsumerPlugin::Reset()
+{
+    std_msgs::Float64 msg;
+    msg.data = this->initialPowerLoad;
+    this->OnPowerLoadCmd(msg);
+    gzdbg << "Battery consumer on battery '" << this->battery->Name() << "' was reset.\n";
 }
 
 void BatteryConsumerPlugin::OnPowerLoadCmd(const std_msgs::Float64& _msg)

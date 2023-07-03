@@ -30,6 +30,8 @@ public:
 
     void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) override;
 
+    void Reset() override;
+
     void OnPowerLoadCmd(const std_msgs::Float64& _msg);
 
 protected:
@@ -46,6 +48,7 @@ private:
 
 protected:
     double powerLoad {0.0};
+    double initialPowerLoad {0.0};
 
     std::unique_ptr<ros::NodeHandle> rosNode;
 

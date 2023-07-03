@@ -131,6 +131,7 @@ void BatteryPlugin::Reset()
     this->ismooth = 0.0;
     this->lastUpdateTime = common::Time::Zero;
     this->Init();
+    gzdbg << "Battery '" << this->battery->Name() << "' was reset.\n";
 }
 
 double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)

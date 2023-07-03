@@ -33,6 +33,8 @@ public:
 
     void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) override;
 
+    void Reset() override;
+
     void OnCmdVelMsg(const geometry_msgs::Twist& _msg);
     void OnGzTwistMsg(const ConstTwistPtr& _msg);
     void OnGzPoseMsg(const ConstPosePtr& _msg);
