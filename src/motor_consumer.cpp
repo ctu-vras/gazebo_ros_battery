@@ -68,8 +68,10 @@ void MotorConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     }
 
     this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
+    std_msgs::Float64 power_load_msg;
+    power_load_msg.data = this->consumerIdlePower;
+    this->powerLoadPub.publish(power_load_msg);
 
-    this->motor_power_pub = this->rosNode->advertise<std_msgs::Float64>(this->consumerName, 1);
     this->joint_state_sub = this->rosNode->subscribe("joint_states", 1, &MotorConsumerPlugin::OnJointStateMsg, this);
 
     std::string textJoints = "all joints";
@@ -124,17 +126,17 @@ void MotorConsumerPlugin::OnJointStateMsg(const sensor_msgs::JointState::ConstPt
     if (motor_power == -1)
         return;
     this->battery->SetPowerLoad(this->consumerId, motor_power);
-    std_msgs::Float64 motor_power_msg;
-    motor_power_msg.data = motor_power;
-    this->motor_power_pub.publish(motor_power_msg);
+    std_msgs::Float64 power_load_msg;
+    power_load_msg.data = motor_power;
+    this->powerLoadPub.publish(power_load_msg);
 }
 
 void MotorConsumerPlugin::Reset()
 {
     this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
-    std_msgs::Float64 motor_power_msg;
-    motor_power_msg.data = this->consumerIdlePower;
-    this->motor_power_pub.publish(motor_power_msg);
+    std_msgs::Float64 power_load_msg;
+    power_load_msg.data = this->consumerIdlePower;
+    this->powerLoadPub.publish(power_load_msg);
     gzdbg << "Motor consumer '" << this->consumerName << "' on battery '"
           << this->link->GetName() << "/" << this->battery->Name() << "' was reset.\n";
 }

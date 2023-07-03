@@ -33,6 +33,10 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->powerLoad = this->initialPowerLoad = _sdf->Get<double>("power_load");
     this->battery->SetPowerLoad(this->consumerId, this->powerLoad);
 
+    std_msgs::Float64 powerLoadMsg;
+    powerLoadMsg.data = this->powerLoad;
+    this->powerLoadPub.publish(powerLoadMsg);
+
     this->power_load_sub = this->consumerNode->subscribe(
         "power_load_cmd", 1, &BatteryConsumerPlugin::OnPowerLoadCmd, this);
 
@@ -55,6 +59,7 @@ void BatteryConsumerPlugin::OnPowerLoadCmd(const std_msgs::Float64& _msg)
     const auto load = this->powerLoad;
     this->powerLoad = _msg.data;
     this->battery->SetPowerLoad(this->consumerId, _msg.data);
+    this->powerLoadPub.publish(_msg);
 
 #ifdef CONSUMER_DEBUG
     gzdbg << "Power load of consumer has changed from:" << load << ", to:" << req.power_load << "\n";

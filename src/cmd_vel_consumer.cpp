@@ -71,8 +71,6 @@ void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
         this->gz_twist_sub = this->gzNode->Subscribe<msgs::Twist>(
             gz_twist_topic, &CmdVelConsumerPlugin::OnGzTwistMsg, this);
 
-    this->cmd_vel_power_pub = this->consumerNode->advertise<std_msgs::Float64>("cmd_vel_power", 1);
-
     const auto cmdVelTopic = _sdf->Get<std::string>("ros_cmd_vel_topic", "").first;
     if (!cmdVelTopic.empty())
         this->cmd_vel_sub = this->rosNode->subscribe(cmdVelTopic, 1, &CmdVelConsumerPlugin::OnCmdVelMsg, this);
@@ -126,9 +124,9 @@ void CmdVelConsumerPlugin::OnCmdVelMsg(const geometry_msgs::Twist& _msg)
     this->lastCmdTime = this->world->SimTime();
     const auto cmd_vel_power = CalculatePower(_msg);
     this->battery->SetPowerLoad(this->consumerId, cmd_vel_power);
-    std_msgs::Float64 cmd_vel_power_msg;
-    cmd_vel_power_msg.data = cmd_vel_power;
-    this->cmd_vel_power_pub.publish(cmd_vel_power_msg);
+    std_msgs::Float64 power_load_msg;
+    power_load_msg.data = cmd_vel_power;
+    this->powerLoadPub.publish(power_load_msg);
 }
 
 void CmdVelConsumerPlugin::OnUpdate(const common::UpdateInfo&)

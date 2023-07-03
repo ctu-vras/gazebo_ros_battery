@@ -52,7 +52,6 @@ protected:
     ros::Subscriber cmd_vel_sub;
     transport::SubscriberPtr gz_twist_sub;
     transport::SubscriberPtr gz_pose_sub;
-    ros::Publisher cmd_vel_power_pub;
     event::ConnectionPtr beforePhysicsUpdateConnection;
 };
 }

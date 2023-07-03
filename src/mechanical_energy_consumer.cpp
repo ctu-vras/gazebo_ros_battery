@@ -56,8 +56,6 @@ void MechanicalEnergyConsumerPlugin::Load(physics::ModelPtr _model, sdf::Element
 
     this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
 
-    this->power_pub = this->rosNode->advertise<std_msgs::Float64>(this->consumerName, 1);
-
     this->beforePhysicsUpdateConnection = event::Events::ConnectBeforePhysicsUpdate(
         std::bind(&MechanicalEnergyConsumerPlugin::OnUpdate, this, std::placeholders::_1));
 
@@ -98,9 +96,9 @@ void MechanicalEnergyConsumerPlugin::OnUpdate(const common::UpdateInfo& info)
 
     if (this->lastPublishTime + this->publishInterval <= info.simTime)
     {
-        std_msgs::Float64 power_msg;
-        power_msg.data = this->consumedCharge / (info.simTime - this->lastPublishTime).Double();
-        this->power_pub.publish(power_msg);
+        std_msgs::Float64 power_load_msg;
+        power_load_msg.data = this->consumedCharge / (info.simTime - this->lastPublishTime).Double();
+        this->powerLoadPub.publish(power_load_msg);
         this->lastPublishTime = info.simTime;
         this->consumedCharge = 0.0;
     }
@@ -115,7 +113,7 @@ void MechanicalEnergyConsumerPlugin::Reset()
     this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
     std_msgs::Float64 power_msg;
     power_msg.data = this->consumerIdlePower;
-    this->power_pub.publish(power_msg);
+    this->powerLoadPub.publish(power_msg);
     gzdbg << "Mechanical energy consumer '" << this->consumerName << "' on battery '"
           << this->link->GetName() << "/" << this->battery->Name() << "' was reset.\n";
 }

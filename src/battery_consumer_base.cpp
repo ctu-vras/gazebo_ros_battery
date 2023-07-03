@@ -11,6 +11,7 @@
 #include <sdf/sdf.hh>
 
 #include <ros/ros.h>
+#include <std_msgs/Float64.h>
 
 #include <gazebo_ros_battery/battery_consumer_base.hh>
 
@@ -62,4 +63,6 @@ void BatteryConsumerBase::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
         this->robotNamespace = _sdf->GetElement("robotNamespace")->Get<std::string>() + "/";
     this->rosNode = std::make_unique<ros::NodeHandle>(this->robotNamespace);
     this->consumerNode = std::make_unique<ros::NodeHandle>(*this->rosNode, this->consumerName);
+
+    this->powerLoadPub = this->consumerNode->advertise<std_msgs::Float64>("power_load", 1, true);
 }

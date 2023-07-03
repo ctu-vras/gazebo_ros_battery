@@ -37,6 +37,7 @@ protected:
     std::string robotNamespace;
     std::unique_ptr<ros::NodeHandle> rosNode;
     std::unique_ptr<ros::NodeHandle> consumerNode;
+    ros::Publisher powerLoadPub;
 
     uint32_t consumerId {std::numeric_limits<uint32_t>::max()};  //!< Consumer identifier
     std::string consumerName;
