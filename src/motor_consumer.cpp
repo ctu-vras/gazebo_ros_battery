@@ -72,7 +72,9 @@ void MotorConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     power_load_msg.data = this->consumerIdlePower;
     this->powerLoadPub.publish(power_load_msg);
 
-    this->joint_state_sub = this->rosNode->subscribe("joint_states", 1, &MotorConsumerPlugin::OnJointStateMsg, this);
+    const auto jointStatesTopic = _sdf->Get<std::string>("joint_states_topic", "joint_states").first;
+    
+    this->joint_state_sub = this->rosNode->subscribe(jointStatesTopic, 1, &MotorConsumerPlugin::OnJointStateMsg, this);
 
     std::string textJoints = "all joints";
     if (this->joints.size() == 1)

@@ -39,9 +39,8 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
     if (!ros::isInitialized())
     {
-        ROS_FATAL_STREAM_NAMED("gazebo_ros_battery",
-                               "A ROS node for Gazebo has not been initialized, unable to load plugin. Load the "
-                               "Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package.");
+        gzerr << "A ROS node for Gazebo has not been initialized, unable to load plugin. Load the "
+              << "Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package.\n";
         return;
     }
 
@@ -147,8 +146,11 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
             totalpower += powerLoad.second;
     }
 
+    // Do not let the voltage drop under the minimum value.
+    const auto voltage = (std::max)(_battery->Voltage(), this->e0 + this->e1);
+    
     // current = power(Watts)/Voltage
-    const auto iraw = totalpower / _battery->Voltage();  // Raw battery current in A.
+    const auto iraw = totalpower / voltage;  // Raw battery current in A.
 
     this->ismooth = this->ismooth + k * (iraw - this->ismooth);
 
