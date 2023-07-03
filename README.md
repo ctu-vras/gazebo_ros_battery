@@ -2,85 +2,43 @@
 
 ## Functionality
 This is a Gazebo classic plugin that simulates an open-circuit battery model. This is a fairly extensible and reusable battery plugin for any kind of Gazebo compatible robots.
-The base of this plugin was primarily developed for the challenge problem 1 (CP1) of the BRASS Project at CMU. 
+The base of this plugin was primarily developed for the challenge problem 1 (CP1) of the BRASS Project at CMU and substantially extended by Czech Technical University in Prague.
 
-This power model simulates the power consumption of a robot. The amount of power consumed by each component of a robot depends on its usage. The battery its current state of the charge after each simulation iteration determined by `dt` in the code. The battery plugin takes the power loads for each component in the robot that consume energy and current voltage value of the battery (which updates according to the open circuit voltage model) as inputs and returns a new voltage value.
+This power model simulates the power consumption of a robot. The amount of power consumed by each component of the robot depends on its usage. The state of charge of the battery is updated after each iteration considering `dt`, the power loads of all components in the robot that consume energy and voltage of the battery (which behaves according to the open circuit voltage model).
 
 ## Support
-This plugin is tested for ROS kinetic and Gazebo 9 and 11.
+This plugin is tested for ROS Melodic/Gazebo 9 and ROS Noetic/Gazebo 11.
 
 ## Build
-This is a standard catkin packge. Just add it to your workspace, install dependencies via rosdep, and build it.
+This is a standard catkin package. Just add it to your workspace, install dependencies via rosdep, and build it.
 
-Compiling will result in a shared library, `~/catkin_ws/src/gazebo_ros_battery/build/devel/lib/libgazebo_ros_battery_discharge.so`, that can be inserted in a Gazebo simulation.
-
-Lastly, add your library path to the `GAZEBO_PLUGIN_PATH`:
-```bash
-export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:~/catkin_ws/src/gazebo_ros_battery/build/devel/lib
-```
+Compiling will result in a shared library `$WORKSPACE/devel/lib/libgazebo_ros_battery_discharge.so` that can be inserted in a Gazebo simulation (and other libraries for consumers).
 
 ## Usage
 
-In the brass.world file, `libbattery_discharge.so` is mentioned as a plugin. 
-This implied that plugin is initialized and loaded when `p2-cp1.world` is opened in Gazebo. 
-The xml code could be linked to any model in a new `.world` file.
-```xml
-<model name="battery_demo_model">
-    <pose>0 0 0 0 0 0</pose>
-    <static>false</static>
-    <link name="body">
-    <battery name="brass_battery">
-        <voltage>12.592</voltage>
-    </battery>
-    </link>
-<plugin name="battery" filename="libgazebo_ros_battery_discharge.so">
-    <link_name>body</link_name>
-    <battery_name>linear_battery</battery_name>
-    <constant_coef>12.694</constant_coef>
-    <linear_coef>-3.1424</linear_coef>
-    <initial_charge>1.1665</initial_charge>
-    <capacity>1.2009</capacity>
-    <resistance>0.061523</resistance>
-    <smooth_current_tau>1.9499</smooth_current_tau>
-    <charge_rate>0.2</charge_rate>
-</plugin>
-<plugin name="consumer" filename="libgazebo_ros_battery_consumer.so">
-    <link_name>body</link_name>
-    <battery_name>linear_battery</battery_name>
-    <power_load>6.6</power_load>
-</plugin>
-</model>
-```
+See `example/battery_demo.world` file for an example on how to integrate the plugin in your model.
 
-# Run the Plugin
+You can run the example world using:
+
 ```bash
-cd ~/catkin_ws/src/gazebo_ros_battery/
-gazebo test/worlds/p2-cp1.world --verbose
+rosrun gazebo_ros gazebo --verbose $WORKSPACE/src/gazebo_ros_battery/examples/battery_demo.world
 ```
 
+## Exposed ROS topics
 
-# Exposed ROS services and topics
-
-This Gazebo plugin expose several services that can be accessed via ROS:
+The Gazebo plugins report their state on the following topics:
 
 ```
-set_charge
-set_charge_rate
-set_charging
-set_model_coefficients
-consumer/set_power_load
+battery_state  # discharge plugin
+charge_level_wh  # discharge plugin
+~/power_load  # all consumer plugins
 ```
 
-Also, this publishes information about the status of robot battery to the following topics:
-```
-battery_state
-charge_level_wh
-/joint/motor_power
-```
+The constant battery consumer can be controlled via topic `~/power_load_cmd` which changes its power consumption.
 
 ## Notes about conversions
-For converting capacity and charge rate (in `Ah`) to power (`mwh`) which is consumed by planner the formula is `(Ah)*(V) = (Wh)`. For example, if you have a `3Ah` battery rated at `5V`, the power is `3Ah * 5V = 15wh` or `15000mwh`.
-For converting `Watts` to `watt-hour`, we do `watt * hour`, e.g., `6 watts / 3600 (wh)` per seconds. 
+For converting capacity and charge rate (in `Ah`) to power (`mWh`) which is consumed by the robot, the formula is `(Ah)*(V) = (Wh)`. For example, if you have a `3 Ah` battery rated at `5 V`, the power is `3 Ah * 5 V = 15 Wh` or `15000 mWh`.
+For converting `Watts` to `Watt-hours`, we do `Watt * hour`, e.g., `6 Watts / 3600 (Wh)` per seconds. 
 
 ## Acknowledgements
 CMU authors used/inspired by existing theory of open circuit battery model. This battery discharge/charge plugin uses the Gazebo `Battery` class which is shipped by the default simulator.
