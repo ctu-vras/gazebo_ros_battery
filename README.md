@@ -58,6 +58,9 @@ The plugin accepts the following configuration XML tags:
 - `<serial_number>` (string, default ''): Value of the `serial_number` field in the ROS messages.
 - `<technology>` (string, default ''): Value of the `power_supply_technology` field in the ROS messages. Can be on of `''`, `NIMH`, `LION`, `LIPO`, `LIFE`, `NICD`, `LIMN`.
 - `<temperature>` (double, default `NaN`): The reported battery temperature.
+- `<num_cells>` (int, default 0): If non-zero, the published message will contain `cell_voltage` and `cell_temperature` arrays filled with either `NaN`s or actual values. If it is zero, the arrays will be empty.
+- `<report_cell_voltage>` (bool, default `false`): If `true`, the `cell_voltage` array will contain total battery voltage divided by number of cells. If `false`, the array will contain `NaN`s.
+- `<report_cell_temperature>` (bool, default `false`): If `true`, the `cell_temperature` array will contain `<temperature>` values. If `false`, the array will contain `NaN`s.
 
 ## Provided consumer plugins
 

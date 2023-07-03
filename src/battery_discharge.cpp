@@ -86,6 +86,9 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     const auto frameId = _sdf->Get<std::string>("frame_id", batteryName).first;
 
     const auto temperature = _sdf->Get<double>("temperature", std::numeric_limits<double>::quiet_NaN()).first;
+    const auto numCells = _sdf->Get<size_t>("num_cells", 0u).first;
+    this->reportCellVoltage = _sdf->Get<bool>("report_cell_voltage", this->reportCellVoltage).first;
+    const auto reportCellTemperature = _sdf->Get<bool>("report_cell_temperature", false).first;
     const auto batteryLocation = _sdf->Get<std::string>("location", "").first;
     const auto batterySerial = _sdf->Get<std::string>("serial_number", "").first;
     const auto technology = _sdf->Get<std::string>("technology", "").first;
@@ -116,6 +119,14 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 #if ROS_VERSION_MINIMUM(1, 15, 0)
     this->batteryMsg.temperature = temperature;
 #endif
+    for (size_t i = 0; i < numCells; ++i)
+    {
+        this->batteryMsg.cell_voltage.push_back(std::numeric_limits<float>::quiet_NaN());
+#if ROS_VERSION_MINIMUM(1, 15, 0)
+        this->batteryMsg.cell_temperature.push_back(
+            reportCellTemperature ? temperature : std::numeric_limits<float>::quiet_NaN());
+#endif
+    }
 
     // Specifying a custom update function
     this->battery->SetUpdateFunc([this](const common::BatteryPtr& b)
@@ -208,6 +219,11 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
             this->batteryMsg.power_supply_status = sensor_msgs::BatteryState::POWER_SUPPLY_STATUS_DISCHARGING;
         else
             this->batteryMsg.power_supply_status = sensor_msgs::BatteryState::POWER_SUPPLY_STATUS_CHARGING;
+        if (this->reportCellVoltage && !this->batteryMsg.cell_voltage.empty())
+        {
+            const auto cellVoltage = static_cast<float>(et / static_cast<double>(this->batteryMsg.cell_voltage.size()));
+            std::fill(this->batteryMsg.cell_voltage.begin(), this->batteryMsg.cell_voltage.end(), cellVoltage);
+        }
 
         this->battery_state.publish(this->batteryMsg);
 

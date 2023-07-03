@@ -52,6 +52,7 @@ protected:
     common::Time lastUpdateTime;
     double updatePeriod {1.0};
     bool allowCharging {true};
+    bool reportCellVoltage {false};
 
     // E(t) = e0 + e1* Q(t)/c
     double e0 {0.0};
