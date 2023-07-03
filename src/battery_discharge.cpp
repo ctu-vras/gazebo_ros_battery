@@ -85,7 +85,7 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
     const auto frameId = _sdf->Get<std::string>("frame_id", batteryName).first;
 
-    const auto temperature = _sdf->Get<double>("temperature", std::numeric_limits<double>::quiet_NaN());
+    const auto temperature = _sdf->Get<double>("temperature", std::numeric_limits<double>::quiet_NaN()).first;
     const auto batteryLocation = _sdf->Get<std::string>("location", "").first;
     const auto batterySerial = _sdf->Get<std::string>("serial_number", "").first;
     const auto technology = _sdf->Get<std::string>("technology", "").first;
