@@ -47,10 +47,10 @@ void MechanicalEnergyConsumerPlugin::Load(physics::ModelPtr _model, sdf::Element
         return;
     }
 
-    this->publishInterval = _sdf->Get<double>("publish_interval", this->publishInterval).first;
-    if (this->publishInterval < 0)
+    this->ignoreFirstDuration = _sdf->Get<double>("ignore_first_duration", this->ignoreFirstDuration).first;
+    if (this->ignoreFirstDuration < 0)
     {
-        gzerr << "publish_interval cannot be negative.\n";
+        gzerr << "ignore_first_duration cannot be negative.\n";
         return;
     }
 
@@ -67,6 +67,18 @@ void MechanicalEnergyConsumerPlugin::Load(physics::ModelPtr _model, sdf::Element
 
 void MechanicalEnergyConsumerPlugin::OnUpdate(const common::UpdateInfo& info)
 {
+    if (this->firstUpdateTime == common::Time::Zero)
+        this->firstUpdateTime = info.simTime;
+    if (info.simTime < this->firstUpdateTime + this->ignoreFirstDuration)
+        return;
+    if (!this->initialized)
+    {
+        this->lastUpdateTime = this->lastPublishTime = info.simTime;
+        this->lastEnergy = this->model->GetWorldEnergyPotential();
+        this->initialized = true;
+        return;
+    }
+
     const double potentialEnergy = this->model->GetWorldEnergyPotential();
     const double kineticEnergy = this->model->GetWorldEnergyKinetic();
     const auto prevEnergy = (this->lastEnergy >= 0) ? this->lastEnergy : potentialEnergy;
@@ -96,9 +108,10 @@ void MechanicalEnergyConsumerPlugin::OnUpdate(const common::UpdateInfo& info)
 
 void MechanicalEnergyConsumerPlugin::Reset()
 {
-    this->lastEnergy = 0.0;
-    this->lastUpdateTime = this->lastPublishTime = common::Time::Zero;
+    this->lastEnergy = -1.0;
+    this->lastUpdateTime = this->lastPublishTime = this->firstUpdateTime = common::Time::Zero;
     this->consumedCharge = 0.0;
+    this->initialized = false;
     this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
     std_msgs::Float64 power_msg;
     power_msg.data = this->consumerIdlePower;

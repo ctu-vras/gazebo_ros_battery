@@ -30,11 +30,14 @@ protected:
     double consumerIdlePower {0.0};  //!< Consumer parameter.
     double friction {0.0};  //!< Fraction of kinetic energy converted to friction energy.
     double publishInterval {1.0};  //!< How often the power output should be published to a ROS topic
+    double ignoreFirstDuration {1.0};  //!< How many seconds since first Update() call should this consumer be ignored.
 
     common::Time lastPublishTime;
     double lastEnergy {-1.0};
+    common::Time firstUpdateTime;
     common::Time lastUpdateTime;
     double consumedCharge {0.0};
+    bool initialized {false};
 
     ros::Publisher power_pub;
     event::ConnectionPtr beforePhysicsUpdateConnection;
