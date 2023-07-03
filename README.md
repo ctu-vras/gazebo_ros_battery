@@ -57,7 +57,7 @@ The plugin accepts the following configuration XML tags:
 - `<location>` (string, default ''): Value of the `location` field in the ROS messages.
 - `<serial_number>` (string, default ''): Value of the `serial_number` field in the ROS messages.
 - `<technology>` (string, default ''): Value of the `power_supply_technology` field in the ROS messages. Can be on of `''`, `NIMH`, `LION`, `LIPO`, `LIFE`, `NICD`, `LIMN`.
-- 
+- `<temperature>` (double, default `NaN`): The reported battery temperature.
 
 ## Provided consumer plugins
 

@@ -10,6 +10,7 @@
 
 #include "battery_discharge.hh"
 
+#include <limits>
 #include <memory>
 #include <string>
 
@@ -84,6 +85,7 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
     const auto frameId = _sdf->Get<std::string>("frame_id", batteryName).first;
 
+    const auto temperature = _sdf->Get<double>("temperature", std::numeric_limits<double>::quiet_NaN());
     const auto batteryLocation = _sdf->Get<std::string>("location", "").first;
     const auto batterySerial = _sdf->Get<std::string>("serial_number", "").first;
     const auto technology = _sdf->Get<std::string>("technology", "").first;
@@ -111,6 +113,9 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->batteryMsg.present = true;
     this->batteryMsg.location = batteryLocation;
     this->batteryMsg.serial_number = batterySerial;
+#if ROS_VERSION_MINIMUM(1, 15, 0)
+    this->batteryMsg.temperature = temperature;
+#endif
 
     // Specifying a custom update function
     this->battery->SetUpdateFunc([this](const common::BatteryPtr& b)
@@ -148,7 +153,7 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
 
     // Do not let the voltage drop under the minimum value.
     const auto voltage = (std::max)(_battery->Voltage(), this->e0 + this->e1);
-    
+
     // current = power(Watts)/Voltage
     const auto iraw = totalpower / voltage;  // Raw battery current in A.
 
