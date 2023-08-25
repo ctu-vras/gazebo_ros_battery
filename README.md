@@ -66,9 +66,11 @@ The plugin accepts the following configuration XML tags:
 
 The following consumer plugins are provided by this plugin (and more plugins can be implemented by extending class `BatteryConsumerBase`).
 
-### ROS Topics
+### Topics
 
-Each consumer plugin publishes its power load to topic `~/power_load` (type `std_msgs/Float64`).
+Each consumer plugin publishes its power load to ROS topic `<robotNamespace>/<consumer_name>/power_load` (type `std_msgs/Float64`).
+
+Each consumer also publishes its consumer ID to Gazebo topic `<world>/<model>/<consumer_name>/consumer_id`. When subscribing, make sure you use a latched subscriber - the value is only published once.
 
 ### Configuration
 
@@ -77,7 +79,7 @@ Each consumer plugin has these XML configuration options (and some other specifi
 - `<robotNamespace>` (string, default ''): If nonempty, this value prefixes the ROS topics created by the plugin.
 - `<link_name>` (string): Name of the link the battery is attached to.
 - `<battery_name>` (string): Name of the battery (has to correspond to the `<battery>` tag in the SDF).
-- `<consumer_name>` (string, default `<battery_name>`): Name of the consumer (will be used as prefix for the `~/power_load` topic and others).
+- `<consumer_name>` (string, defaults to the `name` attribute of the plugin): Name of the consumer (will be used as prefix for the `power_load` topic and others).
 
 ### libgazebo_ros_battery_consumer.so
 

@@ -13,6 +13,8 @@
 #include <gazebo/physics/Model.hh>
 #include <gazebo/physics/PhysicsEngine.hh>
 #include <gazebo/physics/World.hh>
+#include <gazebo/transport/Node.hh>
+#include <gazebo/transport/Publisher.hh>
 
 #include <sdf/Element.hh>
 
@@ -38,6 +40,9 @@ protected:
     std::unique_ptr<ros::NodeHandle> rosNode;
     std::unique_ptr<ros::NodeHandle> consumerNode;
     ros::Publisher powerLoadPub;
+
+    transport::NodePtr gzNode;
+    transport::PublisherPtr gzConsumerIdPub;
 
     uint32_t consumerId {std::numeric_limits<uint32_t>::max()};  //!< Consumer identifier
     std::string consumerName;

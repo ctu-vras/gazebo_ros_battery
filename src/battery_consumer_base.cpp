@@ -7,6 +7,9 @@
 
 #include <gazebo/common/common.hh>
 #include <gazebo/physics/physics.hh>
+#include <gazebo/transport/transport.hh>
+
+#include <ignition/msgs/uint32.pb.h>
 
 #include <sdf/sdf.hh>
 
@@ -64,5 +67,13 @@ void BatteryConsumerBase::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->rosNode = std::make_unique<ros::NodeHandle>(this->robotNamespace);
     this->consumerNode = std::make_unique<ros::NodeHandle>(*this->rosNode, this->consumerName);
 
+    this->gzNode.reset(new transport::Node);
+    this->gzNode->Init(_model->GetWorld()->Name() + "/" + _model->GetName() + "/" + this->consumerName);
+
     this->powerLoadPub = this->consumerNode->advertise<std_msgs::Float64>("power_load", 1, true);
+    this->gzConsumerIdPub = this->gzNode->Advertise<ignition::msgs::UInt32>("~/consumer_id", 1);
+
+    ignition::msgs::UInt32 consumerIdMsg;
+    consumerIdMsg.set_data(this->consumerId);
+    this->gzConsumerIdPub->Publish(consumerIdMsg);  // Make sure all subscribers are latching
 }
