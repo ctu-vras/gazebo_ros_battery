@@ -13,8 +13,8 @@
 
 #include <sdf/sdf.hh>
 
+#include <cras_msgs/PowerStamped.h>
 #include <ros/ros.h>
-#include <std_msgs/Float64.h>
 
 #include <gazebo_ros_battery/battery_consumer_base.hh>
 
@@ -70,7 +70,7 @@ void BatteryConsumerBase::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->gzNode.reset(new transport::Node);
     this->gzNode->Init(_model->GetWorld()->Name() + "/" + _model->GetName() + "/" + this->consumerName);
 
-    this->powerLoadPub = this->consumerNode->advertise<std_msgs::Float64>("power_load", 1, true);
+    this->powerLoadPub = this->consumerNode->advertise<cras_msgs::PowerStamped>("power_load", 1, true);
     this->gzConsumerIdPub = this->gzNode->Advertise<ignition::msgs::UInt32>("~/consumer_id", 1);
 
     ignition::msgs::UInt32 consumerIdMsg;

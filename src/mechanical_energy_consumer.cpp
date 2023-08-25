@@ -11,8 +11,8 @@
 #include <gazebo/transport/transport.hh>
 #include <sdf/sdf.hh>
 
+#include <cras_msgs/PowerStamped.h>
 #include <ros/ros.h>
-#include <std_msgs/Float64.h>
 
 // #define MECHANICAL_ENERGY_CONSUMER_DEBUG
 
@@ -96,8 +96,12 @@ void MechanicalEnergyConsumerPlugin::OnUpdate(const common::UpdateInfo& info)
 
     if (this->lastPublishTime + this->publishInterval <= info.simTime)
     {
-        std_msgs::Float64 power_load_msg;
-        power_load_msg.data = this->consumedCharge / (info.simTime - this->lastPublishTime).Double();
+        cras_msgs::PowerStamped power_load_msg;
+        power_load_msg.header.frame_id = this->consumerName;
+        power_load_msg.header.stamp.sec = info.simTime.sec;
+        power_load_msg.header.stamp.nsec = info.simTime.nsec;
+        power_load_msg.measurement.sample_duration = ros::Duration(this->publishInterval);
+        power_load_msg.measurement.data.power = this->consumedCharge / (info.simTime - this->lastPublishTime).Double();
         this->powerLoadPub.publish(power_load_msg);
         this->lastPublishTime = info.simTime;
         this->consumedCharge = 0.0;
@@ -111,8 +115,11 @@ void MechanicalEnergyConsumerPlugin::Reset()
     this->consumedCharge = 0.0;
     this->initialized = false;
     this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
-    std_msgs::Float64 power_msg;
-    power_msg.data = this->consumerIdlePower;
+    cras_msgs::PowerStamped power_msg;
+    power_msg.header.frame_id = this->consumerName;
+    power_msg.header.stamp.sec = this->model->GetWorld()->SimTime().sec;
+    power_msg.header.stamp.nsec = this->model->GetWorld()->SimTime().nsec;
+    power_msg.measurement.data.power = this->consumerIdlePower;
     this->powerLoadPub.publish(power_msg);
     gzdbg << "Mechanical energy consumer '" << this->consumerName << "' on battery '"
           << this->link->GetName() << "/" << this->battery->Name() << "' was reset.\n";

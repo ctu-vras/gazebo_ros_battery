@@ -12,6 +12,7 @@ project(gazebo_ros_battery)
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(catkin REQUIRED COMPONENTS
+    cras_msgs
     gazebo_dev
     gazebo_plugins
     gazebo_ros

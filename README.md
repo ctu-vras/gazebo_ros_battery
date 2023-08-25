@@ -68,7 +68,7 @@ The following consumer plugins are provided by this plugin (and more plugins can
 
 ### Topics
 
-Each consumer plugin publishes its power load to ROS topic `<robotNamespace>/<consumer_name>/power_load` (type `std_msgs/Float64`).
+Each consumer plugin publishes its power load to ROS topic `<robotNamespace>/<consumer_name>/power_load` (type `cras_msgs/PowerStamped`).
 
 Each consumer also publishes its consumer ID to Gazebo topic `<world>/<model>/<consumer_name>/consumer_id`. When subscribing, make sure you use a latched subscriber - the value is only published once.
 
@@ -85,7 +85,7 @@ Each consumer plugin has these XML configuration options (and some other specifi
 
 Constant load consumer that just applies the given load all the time.
 
-The applied load can be changed by messages published to topic `~/power_load_cmd` (type `std_msgs/Float64`). The load can also be negative, which means charging.
+The applied load can be changed by messages published to topic `~/power_load_cmd` (type `cras_msgs/Power`). The load can also be negative, which means charging.
 
 The following configuration options are available:
 

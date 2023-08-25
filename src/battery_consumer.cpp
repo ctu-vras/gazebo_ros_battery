@@ -15,8 +15,9 @@
 #include <gazebo/physics/physics.hh>
 #include <sdf/sdf.hh>
 
+#include <cras_msgs/Power.h>
+#include <cras_msgs/PowerStamped.h>
 #include <ros/ros.h>
-#include <std_msgs/Float64.h>
 
 // #define CONSUMER_DEBUG
 
@@ -33,8 +34,11 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->powerLoad = this->initialPowerLoad = _sdf->Get<double>("power_load");
     this->battery->SetPowerLoad(this->consumerId, this->powerLoad);
 
-    std_msgs::Float64 powerLoadMsg;
-    powerLoadMsg.data = this->powerLoad;
+    cras_msgs::PowerStamped powerLoadMsg;
+    powerLoadMsg.header.frame_id = this->consumerName;
+    powerLoadMsg.header.stamp.sec = _model->GetWorld()->SimTime().sec;
+    powerLoadMsg.header.stamp.nsec = _model->GetWorld()->SimTime().nsec;
+    powerLoadMsg.measurement.data.power = this->powerLoad;
     this->powerLoadPub.publish(powerLoadMsg);
 
     this->power_load_sub = this->consumerNode->subscribe(
@@ -47,19 +51,25 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
 void BatteryConsumerPlugin::Reset()
 {
-    std_msgs::Float64 msg;
-    msg.data = this->initialPowerLoad;
-    this->OnPowerLoadCmd(msg);
+    cras_msgs::Power powerLoadMsg;
+    powerLoadMsg.power = this->initialPowerLoad;
+    this->OnPowerLoadCmd(powerLoadMsg);
     gzdbg << "Battery consumer '" << this->consumerName << "' on battery '"
           << this->link->GetName() << "/" << this->battery->Name() << "' was reset.\n";
 }
 
-void BatteryConsumerPlugin::OnPowerLoadCmd(const std_msgs::Float64& _msg)
+void BatteryConsumerPlugin::OnPowerLoadCmd(const cras_msgs::Power& _msg)
 {
     const auto load = this->powerLoad;
-    this->powerLoad = _msg.data;
-    this->battery->SetPowerLoad(this->consumerId, _msg.data);
-    this->powerLoadPub.publish(_msg);
+    this->powerLoad = _msg.power;
+    this->battery->SetPowerLoad(this->consumerId, _msg.power);
+
+    cras_msgs::PowerStamped powerLoadMsg;
+    powerLoadMsg.header.frame_id = this->consumerName;
+    powerLoadMsg.header.stamp.sec = this->model->GetWorld()->SimTime().sec;
+    powerLoadMsg.header.stamp.nsec = this->model->GetWorld()->SimTime().nsec;
+    powerLoadMsg.measurement.data = _msg;
+    this->powerLoadPub.publish(powerLoadMsg);
 
 #ifdef CONSUMER_DEBUG
     gzdbg << "Power load of consumer has changed from:" << load << ", to:" << req.power_load << "\n";

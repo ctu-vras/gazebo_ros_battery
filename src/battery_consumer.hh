@@ -16,8 +16,8 @@
 #include <gazebo/physics/physics.hh>
 #include <sdf/sdf.hh>
 
+#include <cras_msgs/Power.h>
 #include <ros/ros.h>
-#include <std_msgs/Float64.h>
 
 #include <gazebo_ros_battery/battery_consumer_base.hh>
 
@@ -33,7 +33,7 @@ public:
 
     void Reset() override;
 
-    void OnPowerLoadCmd(const std_msgs::Float64& _msg);
+    void OnPowerLoadCmd(const cras_msgs::Power& _msg);
 
 protected:
     double initialPowerLoad {0.0};
