@@ -23,7 +23,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 catkin_package(
-    CATKIN_DEPENDS gazebo_dev roscpp
+    CATKIN_DEPENDS cras_msgs gazebo_dev roscpp
     INCLUDE_DIRS include
     LIBRARIES ${PROJECT_NAME}_consumer_base
 )
