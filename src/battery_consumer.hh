@@ -13,6 +13,7 @@
 #include <memory>
 
 #include <gazebo/common/common.hh>
+#include <gazebo/msgs/any.pb.h>
 #include <gazebo/physics/physics.hh>
 #include <sdf/sdf.hh>
 
@@ -35,11 +36,14 @@ public:
 
     void OnPowerLoadCmd(const cras_msgs::Power& _msg);
 
+    void OnGzPowerLoadCmd(const ConstAnyPtr& _msg);
+
 protected:
     double initialPowerLoad {0.0};
     double powerLoad {0.0};
 
     ros::Subscriber power_load_sub;
+    gazebo::transport::SubscriberPtr gz_power_load_sub;
     event::ConnectionPtr updateConnection;
 };
 

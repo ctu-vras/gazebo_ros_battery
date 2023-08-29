@@ -6,10 +6,10 @@
 #include <string>
 
 #include <gazebo/common/common.hh>
+#include <gazebo/msgs/any.pb.h>
+#include <gazebo/msgs/int.pb.h>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/transport/transport.hh>
-
-#include <ignition/msgs/uint32.pb.h>
 
 #include <sdf/sdf.hh>
 
@@ -70,10 +70,52 @@ void BatteryConsumerBase::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->gzNode.reset(new transport::Node);
     this->gzNode->Init(_model->GetWorld()->Name() + "/" + _model->GetName() + "/" + this->consumerName);
 
-    this->powerLoadPub = this->consumerNode->advertise<cras_msgs::PowerStamped>("power_load", 1, true);
-    this->gzConsumerIdPub = this->gzNode->Advertise<ignition::msgs::UInt32>("~/consumer_id", 1);
+    if (_sdf->Get("publish_ros_topic", true).first)
+        this->powerLoadPub = this->consumerNode->advertise<cras_msgs::PowerStamped>("power_load", 1, true);
+    this->gzConsumerIdPub = this->gzNode->Advertise<gazebo::msgs::Int>("~/consumer_id", 1);
+    this->gzPowerLoadPub = this->gzNode->Advertise<gazebo::msgs::Any>("~/power_load", 1);
 
-    ignition::msgs::UInt32 consumerIdMsg;
-    consumerIdMsg.set_data(this->consumerId);
+    gazebo::msgs::Int consumerIdMsg;
+    consumerIdMsg.set_data(static_cast<int32_t>(this->consumerId));
     this->gzConsumerIdPub->Publish(consumerIdMsg);  // Make sure all subscribers are latching
+}
+
+void BatteryConsumerBase::Publish(const double powerLoad, const gazebo::common::Time& time,
+                                  const ros::Duration& sampleInterval, const double variance)
+{
+    this->gzPowerLoadPub->Publish(gazebo::msgs::ConvertAny(powerLoad));
+
+    if (this->powerLoadPub)
+    {
+        cras_msgs::PowerStamped powerLoadMsg;
+        powerLoadMsg.header.frame_id = this->consumerName;
+        powerLoadMsg.header.stamp.sec = time.sec;
+        powerLoadMsg.header.stamp.nsec = time.nsec;
+        powerLoadMsg.measurement.data.power = powerLoad;
+        powerLoadMsg.measurement.sample_duration = sampleInterval;
+        powerLoadMsg.measurement.variance = variance;
+        this->powerLoadPub.publish(powerLoadMsg);
+    }
+}
+
+void BatteryConsumerBase::Publish(const double powerLoad, const gazebo::common::Time& time,
+                                  const ros::Duration& sampleInterval)
+{
+    this->Publish(powerLoad, time, sampleInterval, 0.0);
+}
+
+void BatteryConsumerBase::Publish(const double powerLoad, const gazebo::common::Time& time,
+                                  const double variance)
+{
+    this->Publish(powerLoad, time, {}, variance);
+}
+
+void BatteryConsumerBase::Publish(const double powerLoad, const gazebo::common::Time& time)
+{
+    this->Publish(powerLoad, time, {}, 0.0);
+}
+
+void BatteryConsumerBase::Publish(const double powerLoad)
+{
+    this->Publish(powerLoad, this->world->SimTime(), {}, 0.0);
 }

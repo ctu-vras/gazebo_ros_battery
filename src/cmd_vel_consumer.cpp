@@ -124,12 +124,8 @@ void CmdVelConsumerPlugin::OnCmdVelMsg(const geometry_msgs::Twist& _msg)
     this->lastCmdTime = this->world->SimTime();
     const auto cmd_vel_power = CalculatePower(_msg);
     this->battery->SetPowerLoad(this->consumerId, cmd_vel_power);
-    cras_msgs::PowerStamped power_load_msg;
-    power_load_msg.header.frame_id = this->consumerName;
-    power_load_msg.header.stamp.sec = this->lastCmdTime.sec;
-    power_load_msg.header.stamp.nsec = this->lastCmdTime.nsec;
-    power_load_msg.measurement.data.power = cmd_vel_power;
-    this->powerLoadPub.publish(power_load_msg);
+
+    this->Publish(cmd_vel_power, this->lastCmdTime);
 }
 
 void CmdVelConsumerPlugin::OnUpdate(const common::UpdateInfo&)

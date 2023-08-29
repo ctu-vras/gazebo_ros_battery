@@ -68,12 +68,8 @@ void MotorConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     }
 
     this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
-    cras_msgs::PowerStamped power_load_msg;
-    power_load_msg.header.frame_id = this->consumerName;
-    power_load_msg.header.stamp.sec = _model->GetWorld()->SimTime().sec;
-    power_load_msg.header.stamp.nsec = _model->GetWorld()->SimTime().nsec;
-    power_load_msg.measurement.data.power = this->consumerIdlePower;
-    this->powerLoadPub.publish(power_load_msg);
+
+    this->Publish(this->consumerIdlePower);
 
     const auto jointStatesTopic = _sdf->Get<std::string>("joint_states_topic", "joint_states").first;
 
@@ -131,23 +127,16 @@ void MotorConsumerPlugin::OnJointStateMsg(const sensor_msgs::JointState::ConstPt
     if (motor_power == -1)
         return;
     this->battery->SetPowerLoad(this->consumerId, motor_power);
-    cras_msgs::PowerStamped power_load_msg;
-    power_load_msg.header.frame_id = this->consumerName;
-    power_load_msg.header.stamp.sec = this->model->GetWorld()->SimTime().sec;
-    power_load_msg.header.stamp.nsec = this->model->GetWorld()->SimTime().nsec;
-    power_load_msg.measurement.data.power = motor_power;
-    this->powerLoadPub.publish(power_load_msg);
+
+    this->Publish(motor_power);
 }
 
 void MotorConsumerPlugin::Reset()
 {
     this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
-    cras_msgs::PowerStamped power_load_msg;
-    power_load_msg.header.frame_id = this->consumerName;
-    power_load_msg.header.stamp.sec = this->model->GetWorld()->SimTime().sec;
-    power_load_msg.header.stamp.nsec = this->model->GetWorld()->SimTime().nsec;
-    power_load_msg.measurement.data.power = this->consumerIdlePower;
-    this->powerLoadPub.publish(power_load_msg);
+
+    this->Publish(this->consumerIdlePower);
+
     gzdbg << "Motor consumer '" << this->consumerName << "' on battery '"
           << this->link->GetName() << "/" << this->battery->Name() << "' was reset.\n";
 }

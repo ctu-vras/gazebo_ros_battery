@@ -96,13 +96,10 @@ void MechanicalEnergyConsumerPlugin::OnUpdate(const common::UpdateInfo& info)
 
     if (this->lastPublishTime + this->publishInterval <= info.simTime)
     {
-        cras_msgs::PowerStamped power_load_msg;
-        power_load_msg.header.frame_id = this->consumerName;
-        power_load_msg.header.stamp.sec = info.simTime.sec;
-        power_load_msg.header.stamp.nsec = info.simTime.nsec;
-        power_load_msg.measurement.sample_duration = ros::Duration(this->publishInterval);
-        power_load_msg.measurement.data.power = this->consumedCharge / (info.simTime - this->lastPublishTime).Double();
-        this->powerLoadPub.publish(power_load_msg);
+        const auto power = this->consumedCharge / (info.simTime - this->lastPublishTime).Double();
+
+        this->Publish(power, info.simTime, ros::Duration(this->publishInterval));
+
         this->lastPublishTime = info.simTime;
         this->consumedCharge = 0.0;
     }
@@ -115,12 +112,7 @@ void MechanicalEnergyConsumerPlugin::Reset()
     this->consumedCharge = 0.0;
     this->initialized = false;
     this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
-    cras_msgs::PowerStamped power_msg;
-    power_msg.header.frame_id = this->consumerName;
-    power_msg.header.stamp.sec = this->model->GetWorld()->SimTime().sec;
-    power_msg.header.stamp.nsec = this->model->GetWorld()->SimTime().nsec;
-    power_msg.measurement.data.power = this->consumerIdlePower;
-    this->powerLoadPub.publish(power_msg);
+    this->Publish(0.0);
     gzdbg << "Mechanical energy consumer '" << this->consumerName << "' on battery '"
           << this->link->GetName() << "/" << this->battery->Name() << "' was reset.\n";
 }

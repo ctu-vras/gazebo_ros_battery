@@ -31,18 +31,17 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
     BatteryConsumerBase::Load(_model, _sdf);
 
-    this->powerLoad = this->initialPowerLoad = _sdf->Get<double>("power_load");
+    this->powerLoad = this->initialPowerLoad = _sdf->Get<double>("power_load", 0.0).first;
     this->battery->SetPowerLoad(this->consumerId, this->powerLoad);
 
-    cras_msgs::PowerStamped powerLoadMsg;
-    powerLoadMsg.header.frame_id = this->consumerName;
-    powerLoadMsg.header.stamp.sec = _model->GetWorld()->SimTime().sec;
-    powerLoadMsg.header.stamp.nsec = _model->GetWorld()->SimTime().nsec;
-    powerLoadMsg.measurement.data.power = this->powerLoad;
-    this->powerLoadPub.publish(powerLoadMsg);
+    this->Publish(this->powerLoad);
 
-    this->power_load_sub = this->consumerNode->subscribe(
-        "power_load_cmd", 1, &BatteryConsumerPlugin::OnPowerLoadCmd, this);
+    if (_sdf->Get("subscribe_ros_topic", true).first)
+        this->power_load_sub = this->consumerNode->subscribe(
+            "power_load_cmd", 1, &BatteryConsumerPlugin::OnPowerLoadCmd, this);
+
+    this->gz_power_load_sub = this->gzNode->Subscribe(
+        "~/power_load_cmd", &BatteryConsumerPlugin::OnGzPowerLoadCmd, this, true);
 
     gzmsg << "Added constant consumer '" << this->consumerName << "' to battery '"
           << this->link->GetName() << "/" << this->battery->Name() << "' with power load "
@@ -64,14 +63,19 @@ void BatteryConsumerPlugin::OnPowerLoadCmd(const cras_msgs::Power& _msg)
     this->powerLoad = _msg.power;
     this->battery->SetPowerLoad(this->consumerId, _msg.power);
 
-    cras_msgs::PowerStamped powerLoadMsg;
-    powerLoadMsg.header.frame_id = this->consumerName;
-    powerLoadMsg.header.stamp.sec = this->model->GetWorld()->SimTime().sec;
-    powerLoadMsg.header.stamp.nsec = this->model->GetWorld()->SimTime().nsec;
-    powerLoadMsg.measurement.data = _msg;
-    this->powerLoadPub.publish(powerLoadMsg);
+    this->Publish(_msg.power);
 
 #ifdef CONSUMER_DEBUG
     gzdbg << "Power load of consumer has changed from:" << load << ", to:" << req.power_load << "\n";
 #endif
+}
+
+void BatteryConsumerPlugin::OnGzPowerLoadCmd(const ConstAnyPtr& _msg)
+{
+    if (_msg->has_type() && _msg->type() == gazebo::msgs::Any_ValueType_DOUBLE && _msg->has_double_value())
+    {
+        cras_msgs::Power rosMsg;
+        rosMsg.power = _msg->double_value();
+        this->OnPowerLoadCmd(rosMsg);
+    }
 }

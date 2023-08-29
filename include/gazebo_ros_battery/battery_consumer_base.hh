@@ -30,6 +30,13 @@ public:
     void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) override;
 
 protected:
+    virtual void Publish(double powerLoad, const gazebo::common::Time& time, const ros::Duration& sampleInterval,
+                         double variance);
+    void Publish(double powerLoad, const gazebo::common::Time& time, double variance);
+    void Publish(double powerLoad, const gazebo::common::Time& time, const ros::Duration& sampleInterval);
+    void Publish(double powerLoad, const gazebo::common::Time& time);
+    void Publish(double powerLoad);
+
     physics::WorldPtr world;
     physics::ModelPtr model;
     physics::LinkPtr link;
@@ -43,6 +50,7 @@ protected:
 
     transport::NodePtr gzNode;
     transport::PublisherPtr gzConsumerIdPub;
+    transport::PublisherPtr gzPowerLoadPub;
 
     uint32_t consumerId {std::numeric_limits<uint32_t>::max()};  //!< Consumer identifier
     std::string consumerName;

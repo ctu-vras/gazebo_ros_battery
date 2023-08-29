@@ -68,9 +68,11 @@ The following consumer plugins are provided by this plugin (and more plugins can
 
 ### Topics
 
-Each consumer plugin publishes its power load to ROS topic `<robotNamespace>/<consumer_name>/power_load` (type `cras_msgs/PowerStamped`).
+Each consumer plugin publishes its power load to ROS topic `<robotNamespace>/<consumer_name>/power_load` (type `cras_msgs/PowerStamped`) unless disabled by `<publish_ros_topic>` set to `false`.
 
-Each consumer also publishes its consumer ID to Gazebo topic `<world>/<model>/<consumer_name>/consumer_id`. When subscribing, make sure you use a latched subscriber - the value is only published once.
+Each consumer plugin publishes its power load to Gazebo topic `<world>/<model>/<consumer_name>/power_load` (type `gazebo.msgs.Any` with `DOUBLE` type).
+
+Each consumer also publishes its consumer ID to Gazebo topic `<world>/<model>/<consumer_name>/consumer_id` (type `gazebo.msgs.Int`). When subscribing, make sure you use a latched subscriber - the value is only published once.
 
 ### Configuration
 
@@ -80,16 +82,20 @@ Each consumer plugin has these XML configuration options (and some other specifi
 - `<link_name>` (string): Name of the link the battery is attached to.
 - `<battery_name>` (string): Name of the battery (has to correspond to the `<battery>` tag in the SDF).
 - `<consumer_name>` (string, defaults to the `name` attribute of the plugin): Name of the consumer (will be used as prefix for the `power_load` topic and others).
+- `<publish_ros_topic>` (bool, defaults to `true`): Whether the `power_load` ROS topic should be published.
 
 ### libgazebo_ros_battery_consumer.so
 
 Constant load consumer that just applies the given load all the time.
 
-The applied load can be changed by messages published to topic `~/power_load_cmd` (type `cras_msgs/Power`). The load can also be negative, which means charging.
+The applied load can be changed by messages published to ROS topic `<robotNamespace>/<consumer_name>/power_load_cmd` (type `cras_msgs/Power`)
+or Gazebo topic `<world>/<model>/<consumer_name>/power_load_cmd` (type `gazebo.msgs.Any` with `DOUBLE` type).
+The load can also be negative, which means charging.
 
 The following configuration options are available:
 
 - `<power_load>` (float): The initial power load in Watts.
+- `<subscribe_ros_topic>` (bool, defaults to `true`): Whether the `power_load_cmd` ROS topic should be subscribed.
 
 ### libgazebo_ros_cmd_vel_battery_consumer.so
 
