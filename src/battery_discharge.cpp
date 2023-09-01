@@ -7,12 +7,16 @@
 // - cleaned up the code
 // - changed to publish BatteryState message
 // - removed the services
+// - added temperature modeling
 
 #include "battery_discharge.hh"
 
 #include <limits>
 #include <memory>
 #include <string>
+#include <vector>
+
+#include <boost/algorithm/string.hpp>
 
 #include <gazebo/common/common.hh>
 #include <gazebo/physics/physics.hh>
@@ -54,13 +58,28 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
     this->rosNode = std::make_unique<ros::NodeHandle>(robotNamespace);
 
+    this->gzNode.reset(new gazebo::transport::Node);
+    this->gzNode->Init(_model->GetWorld()->Name());
+
     this->battery_state = this->rosNode->advertise<sensor_msgs::BatteryState>("battery_state", 1);
     this->charge_state_wh = this->rosNode->advertise<std_msgs::Float64>("charge_level_wh", 1);
+
+    this->ambientTemperature = _sdf->Get<double>("ambient_temperature", this->ambientTemperature).first;
+    const auto ambientTemperatureRosTopic = _sdf->Get<std::string>("ambient_temperature_ros_topic", "").first;
+    const auto ambientTemperatureGzTopic = _sdf->Get<std::string>("ambient_temperature_gz_topic", "").first;
+    if (!ambientTemperatureRosTopic.empty())
+        this->rosAmbientTemperatureSub = this->rosNode->subscribe(
+            ambientTemperatureRosTopic, 10, &BatteryPlugin::OnRosAmbientTempMsg, this);
+    else if (!ambientTemperatureGzTopic.empty())
+        this->gzAmbientTemperatureSub = this->gzNode->Subscribe(
+            ambientTemperatureGzTopic, &BatteryPlugin::OnGzAmbientTempMsg, this, true);
 
     const auto linkName = _sdf->Get<std::string>("link_name");
     this->link = this->model->GetLink(linkName);
 
     this->allowCharging = _sdf->Get<bool>("allow_charging", this->allowCharging).first;
+    this->computeResistance = _sdf->Get<bool>("compute_resistance", false).first;
+    this->computeTemperature = _sdf->Get<bool>("compute_temperature", false).first;
 
     this->updatePeriod = 1.0 / _sdf->Get<double>("update_rate", this->updatePeriod).first;
     this->e0 = _sdf->Get<double>("constant_coef");
@@ -68,8 +87,34 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->q0 = _sdf->Get<double>("initial_charge");
     this->c = _sdf->Get<double>("capacity");
     const auto designCapacity = _sdf->Get<double>("design_capacity", this->c).first;
-    this->r = _sdf->Get<double>("resistance");
     this->tau = _sdf->Get<double>("smooth_current_tau");
+
+    this->t = this->baseTemperature = _sdf->Get<double>("temperature", this->t).first;
+
+    if (this->computeResistance)
+    {
+        const auto coefs = _sdf->Get<std::string>("resistance_temperature_coeffs", "").first;
+        std::vector<std::string> coeffStrs;
+        boost::split(coeffStrs, coefs, boost::is_any_of(",;"));
+        for (const auto& coeffStr : coeffStrs)
+        {
+            try
+            {
+                this->resistanceTemperatureCoeffs.emplace_back(boost::lexical_cast<double>(coeffStr));
+            }
+            catch (const boost::bad_lexical_cast& e)
+            {
+                gzerr << "Could not read coefficient " << coeffStr << " as number.\n";
+            }
+        }
+    }
+    else
+    {
+        this->r = _sdf->Get<double>("resistance");
+    }
+
+    this->heatDissipationRate = _sdf->Get<double>("heat_dissipation_rate", this->heatDissipationRate).first;
+    this->heatCapacity = _sdf->Get<double>("heat_capacity", this->heatCapacity).first;
 
     const auto batteryName = _sdf->Get<std::string>("battery_name");
 
@@ -85,10 +130,9 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
     const auto frameId = _sdf->Get<std::string>("frame_id", batteryName).first;
 
-    const auto temperature = _sdf->Get<double>("temperature", std::numeric_limits<double>::quiet_NaN()).first;
     const auto numCells = _sdf->Get<size_t>("num_cells", 0u).first;
     this->reportCellVoltage = _sdf->Get<bool>("report_cell_voltage", this->reportCellVoltage).first;
-    const auto reportCellTemperature = _sdf->Get<bool>("report_cell_temperature", false).first;
+    this->reportCellTemperature = _sdf->Get<bool>("report_cell_temperature", false).first;
     const auto batteryLocation = _sdf->Get<std::string>("location", "").first;
     const auto batterySerial = _sdf->Get<std::string>("serial_number", "").first;
     const auto technology = _sdf->Get<std::string>("technology", "").first;
@@ -117,16 +161,13 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->batteryMsg.location = batteryLocation;
     this->batteryMsg.serial_number = batterySerial;
 #if ROS_VERSION_MINIMUM(1, 15, 0)
-    this->batteryMsg.temperature = temperature;
+    this->batteryMsg.temperature = this->t;
 #endif
-    for (size_t i = 0; i < numCells; ++i)
-    {
-        this->batteryMsg.cell_voltage.push_back(std::numeric_limits<float>::quiet_NaN());
+    this->batteryMsg.cell_voltage.resize(numCells, std::numeric_limits<float>::quiet_NaN());
 #if ROS_VERSION_MINIMUM(1, 15, 0)
-        this->batteryMsg.cell_temperature.push_back(
-            reportCellTemperature ? temperature : std::numeric_limits<float>::quiet_NaN());
+    this->batteryMsg.cell_temperature.resize(numCells,
+        this->reportCellTemperature ? this->t : std::numeric_limits<float>::quiet_NaN());
 #endif
-    }
 
     // Specifying a custom update function
     this->battery->SetUpdateFunc([this](const common::BatteryPtr& b)
@@ -139,6 +180,10 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 void BatteryPlugin::Init()
 {
     this->q = this->q0;
+    this->heatEnergy = 0.0;
+    if (this->computeTemperature)
+        this->t = this->baseTemperature;
+    this->UpdateResistance();
 }
 
 void BatteryPlugin::Reset()
@@ -147,6 +192,22 @@ void BatteryPlugin::Reset()
     this->lastUpdateTime = common::Time::Zero;
     this->Init();
     gzdbg << "Battery '" << this->battery->Name() << "' was reset.\n";
+}
+
+void BatteryPlugin::UpdateResistance()
+{
+    if (this->computeResistance && !std::isnan(this->t) && !this->resistanceTemperatureCoeffs.empty())
+    {
+        const auto& coefs = this->resistanceTemperatureCoeffs;
+        double newR = 0;
+        for (size_t i = 0; i < coefs.size(); ++i)
+            newR += coefs[i] * std::pow(this->t, i);
+        this->r = newR;
+
+#ifdef BATTERY_DEBUG
+        gzdbg << "Current resistance:" << this->r << ", at:" << this->world->SimTime() << "\n";
+#endif
+    }
 }
 
 double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
@@ -173,22 +234,29 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
     this->q = (std::max)(0.0, this->q - GZ_SEC_TO_HOUR(dt * this->ismooth));
 
 #ifdef BATTERY_DEBUG
-    gzdbg << "Current charge:" << this->charge << ", at:" << this->sim_time_now << "\n";
+    gzdbg << "Current charge:" << this->q << ", at:" << this->world->SimTime() << "\n";
 #endif
 
+    this->UpdateResistance();
+
     // Voltage on terminal
-    double et = this->e0 + this->e1 * (1 - this->q / this->c) - this->r * this->ismooth;
+    const auto voltageLoss = this->r * this->ismooth;
+    double et = this->e0 + this->e1 * (1 - this->q / this->c) - voltageLoss;
     // In case the battery is charging (ismooth is negative), we don't want the voltage to go over the maximum
     et = (std::min)(et, this->e0);
 
 #ifdef BATTERY_DEBUG
-    gzdbg << "Current voltage:" << this->et << ", at:" << this->sim_time_now << "\n";
+    gzdbg << "Current voltage:" << et << ", at:" << this->world->SimTime() << "\n";
 #endif
+
+    // Watts of power lost due to internal resistance
+    auto powerLoss = voltageLoss * this->ismooth;  // note this is always non-negative (contains I^2)
 
     // Turn off the motor
     if (this->q <= 0)
     {
         et = 0;
+        powerLoss = 0;
 
         // TODO figure out how to turn off the robot
 
@@ -201,6 +269,23 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
         this->q = this->c;
         // If the battery is charging and full, do not let any other charging current in
         this->ismooth = (std::max)(0.0, this->ismooth);
+
+        powerLoss = voltageLoss * this->ismooth;
+    }
+
+    if (this->computeTemperature)
+    {
+        const auto generatedHeatJoules = powerLoss * dt;
+        this->heatEnergy += generatedHeatJoules;
+
+        const auto dissipatedJoules = (this->t - this->ambientTemperature) * this->heatDissipationRate;
+        this->heatEnergy -= dissipatedJoules;
+
+        this->t = this->baseTemperature + this->heatEnergy / this->heatCapacity;
+
+#ifdef BATTERY_DEBUG
+        gzdbg << "Current temperature:" << this->t << ", at:" << this->world->SimTime() << "\n";
+#endif
     }
 
     if (this->lastUpdateTime + this->updatePeriod < this->world->SimTime())
@@ -224,6 +309,11 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
             const auto cellVoltage = static_cast<float>(et / static_cast<double>(this->batteryMsg.cell_voltage.size()));
             std::fill(this->batteryMsg.cell_voltage.begin(), this->batteryMsg.cell_voltage.end(), cellVoltage);
         }
+#if ROS_VERSION_MINIMUM(1, 15, 0)
+        this->batteryMsg.temperature = this->t;
+        if (this->reportCellTemperature)
+            std::fill(this->batteryMsg.cell_temperature.begin(), this->batteryMsg.cell_temperature.end(), this->t);
+#endif
 
         this->battery_state.publish(this->batteryMsg);
 
@@ -233,4 +323,15 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
     }
 
     return et;
+}
+
+void BatteryPlugin::OnRosAmbientTempMsg(const sensor_msgs::Temperature& _msg)
+{
+    this->ambientTemperature = _msg.temperature;
+}
+
+void BatteryPlugin::OnGzAmbientTempMsg(const ConstAnyPtr& _msg)
+{
+    if (_msg->has_type() && _msg->type() == msgs::Any_ValueType_DOUBLE && _msg->has_double_value())
+        this->ambientTemperature = _msg->double_value();
 }

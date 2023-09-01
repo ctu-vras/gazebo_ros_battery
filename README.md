@@ -6,6 +6,8 @@ The base of this plugin was primarily developed for the challenge problem 1 (CP1
 
 This power model simulates the power consumption of a robot. The amount of power consumed by each component of the robot depends on its usage. The state of charge of the battery is updated after each iteration considering `dt`, the power loads of all components in the robot that consume energy and voltage of the battery (which behaves according to the open circuit voltage model).
 
+If wanted, the plugin can also model dynamic temperature and internal resistance of the battery.
+
 ## Support
 This plugin is tested for ROS Melodic/Gazebo 9 and ROS Noetic/Gazebo 11.
 
@@ -51,16 +53,30 @@ The plugin accepts the following configuration XML tags:
 - `<initial_charge>` (float): Initial charge of the battery in Ah.
 - `<capacity>` (float): Capacity of the battery in Ah.
 - `<design_capacity>` (float): Capacity of the battery when it was new in Ah.
-- `<resistance>` (float): Internal resistance of the battery in Ohms. It affects how large is the influence of power load to voltage drop.
+- `<compute_temperature>` (bool, default `false`): Switches between static temperature model and a thermal development model based on power loss due to internal resistance and heat dissipation into environment.
+  - Static model (selected by `false`):
+    - `<temperature>` (float, default `NaN`): The reported battery temperature.
+  - Thermal development model (selected by `true`):
+    - `<temperature>` (float): Initial temperature of the battery.
+    - `<heat_capacity>` (float, default 1 J/K): Thermal capacity of the battery in J/K. It can be computed as `specific heat` * `mass of heated material`.
+    - `<heat_dissipation_rate>` (float, default 0 W/K): Rate of heat dissipation in J/(K.s) or W/K. It can be computed as `heat transfer coefficient` * `cooling area`.
+    - An ambient temperature model is required. It can either be static or read from a topic.
+      - `<ambient_temperature>` (float, default 25 deg C): The initial ambient temperature in degrees Celsius. If no topics are specified, this temperature is treated as static.
+      - `<ambient_temperature_ros_topic>` (string, optional): If specified, the plugin will subscribe to the given ROS topic to update the ambient temperature. The topic is expected to have type `sensor_msgs/Temperature`.
+      - `<ambient_temperature_gz_topic>` (string, optional): If specified, the plugin will subscribe to the given Gazebo topic to update the ambient temperature. The topic is expected to have type `gazebo.msgs.Any` with `DOUBLE` type and double value.
+- `<compute_resistance>` (bool, default `false`): Switches between static internal resistance model and a temperature-based one.
+  - Static model (selected by `false`):
+    - `<resistance>` (float): Internal resistance of the battery in Ohms. It affects how large is the influence of power load to voltage drop.
+  - Temperature-based model (selected by `true`) can only be used if temperature is specified (i.e. either static and non-NaN, or computed via model):
+    - `<resistance_temperature_coeffs>` (list of float): Coefficients $`c_i`$ of the polynomial $`\sum_i{c_i \ast T^i}`$, where $`T`$ is current temperature of the battery. This field expects multiple float values separated by either `,` or `;`. Article https://www.sciencedirect.com/science/article/pii/S2352152X21010689 gives a 3-rd order polynomial for Li-Ion batteries.
 - `<smooth_current_tau>` (float): Parameter of a low-pass filter that filters the power load measurements. Should be between 0 and 1.
 - `<frame_id>` (string, default `<battery_name>`): The frame ID used in ROS messages.
 - `<location>` (string, default ''): Value of the `location` field in the ROS messages.
 - `<serial_number>` (string, default ''): Value of the `serial_number` field in the ROS messages.
 - `<technology>` (string, default ''): Value of the `power_supply_technology` field in the ROS messages. Can be on of `''`, `NIMH`, `LION`, `LIPO`, `LIFE`, `NICD`, `LIMN`.
-- `<temperature>` (double, default `NaN`): The reported battery temperature.
 - `<num_cells>` (int, default 0): If non-zero, the published message will contain `cell_voltage` and `cell_temperature` arrays filled with either `NaN`s or actual values. If it is zero, the arrays will be empty.
 - `<report_cell_voltage>` (bool, default `false`): If `true`, the `cell_voltage` array will contain total battery voltage divided by number of cells. If `false`, the array will contain `NaN`s.
-- `<report_cell_temperature>` (bool, default `false`): If `true`, the `cell_temperature` array will contain `<temperature>` values. If `false`, the array will contain `NaN`s.
+- `<report_cell_temperature>` (bool, default `false`): If `true`, the `cell_temperature` array will contain temperature values. If `false`, the array will contain `NaN`s.
 
 ## Provided consumer plugins
 

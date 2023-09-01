@@ -9,24 +9,29 @@
 // - cleaned up the code
 // - changed to publish BatteryState message
 // - removed the services
+// - added temperature modeling
 
+#include <limits>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <gazebo/common/common.hh>
+#include <gazebo/msgs/any.pb.h>
 #include <gazebo/physics/physics.hh>
+#include <gazebo/transport/transport.hh>
 #include <sdf/sdf.hh>
 
 #include <ros/ros.h>
 #include <sensor_msgs/BatteryState.h>
+#include <sensor_msgs/Temperature.h>
 
 namespace gazebo
 {
 
-/// \brief A plugin that simulate BRASS CP1 battery model: discharge and charge according to power models
+/// \brief A plugin that simulates a linear battery model: discharge and charge according to linear power models.
 class GAZEBO_VISIBLE BatteryPlugin : public ModelPlugin
 {
-    /// \brief Constructor
 public:
     BatteryPlugin();
 
@@ -41,6 +46,11 @@ public:
 private:
     double OnUpdateVoltage(const common::BatteryPtr& _battery);
 
+    void OnRosAmbientTempMsg(const sensor_msgs::Temperature& _msg);
+    void OnGzAmbientTempMsg(const ConstAnyPtr& _msg);
+
+    void UpdateResistance();
+
 protected:
     event::ConnectionPtr updateConnection;
     physics::WorldPtr world;
@@ -53,6 +63,14 @@ protected:
     double updatePeriod {1.0};
     bool allowCharging {true};
     bool reportCellVoltage {false};
+    bool reportCellTemperature {false};
+    bool computeResistance {false};
+    bool computeTemperature {false};
+    double baseTemperature {std::numeric_limits<double>::quiet_NaN()};
+    std::vector<double> resistanceTemperatureCoeffs;
+    double heatDissipationRate {0.0};
+    double heatCapacity {1.0};
+    double ambientTemperature {25.0};
 
     // E(t) = e0 + e1* Q(t)/c
     double e0 {0.0};
@@ -62,7 +80,7 @@ protected:
 
     double c {0.0};  //!< Battery capacity in Ah.
 
-    double r {0.0};  //!< Battery inner resistance in Ohm
+    double r {0.0};  //!< Battery inner resistance in Ohms.
 
     double tau {0.0};  //!< Current low-pass filter characteristic time in seconds.
 
@@ -70,11 +88,18 @@ protected:
 
     double q {0.0};  //!< Instantaneous battery charge in Ah.
 
-    // This node is for ros communications
+    double t {std::numeric_limits<double>::quiet_NaN()};  //!< Temperature of the battery in degrees Celsius.
+
+    double heatEnergy {0.0};  //!< Heat energy stored in the battery in Joules.
+
     std::unique_ptr<ros::NodeHandle> rosNode;
+    gazebo::transport::NodePtr gzNode;
 
     ros::Publisher battery_state;
     ros::Publisher charge_state_wh;
+    ros::Subscriber rosAmbientTemperatureSub;
+
+    gazebo::transport::SubscriberPtr gzAmbientTemperatureSub;
 
     sensor_msgs::BatteryState batteryMsg;
 };

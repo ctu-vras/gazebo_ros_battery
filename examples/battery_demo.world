@@ -69,6 +69,24 @@ Original file from https://github.com/rosin-project/brass_gazebo_battery edited 
                 <resistance>0.061523</resistance>
                 <smooth_current_tau>1.9499</smooth_current_tau>
                 <allow_charging>true</allow_charging>
+
+                <!-- Temperature model configuration -->
+
+                <temperature>30.0</temperature>
+                <!-- These can be left out if only static temperature model should be used. -->
+                <compute_temperature>true</compute_temperature>
+                <ambient_temperature>25.0</ambient_temperature>
+                <heat_dissipation_rate>1e-2</heat_dissipation_rate>
+                <heat_capacity>1e4</heat_capacity>
+
+                <!-- Internal resistance model configuration -->
+
+                <compute_resistance>true</compute_resistance>
+                <!-- This config would be used when a static model of resistance is to be used. -->
+                <!--resistance>0.01</resistance-->
+                <!-- This config is used for the dynamic temperature-based resistance model. -->
+                <!-- Magic constants taken from https://www.sciencedirect.com/science/article/pii/S2352152X21010689 -->
+                <resistance_temperature_coeffs>0.012407,-0.0005345,0.0000134,-0.0000001</resistance_temperature_coeffs>
             </plugin>
             <plugin name="consumer" filename="libgazebo_ros_battery_consumer.so">
                 <link_name>body</link_name>
