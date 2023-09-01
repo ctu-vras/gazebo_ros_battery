@@ -37,11 +37,15 @@ public:
 
 protected:
     double CalculatePower(const sensor_msgs::JointState::ConstPtr& _msg);
+    void SetEnabled(bool enabled) override;
+
     event::ConnectionPtr updateConnection;
     std::unordered_map<std::string, physics::JointPtr> joints;
 
     double efficiency {1.0};  //!< Consumer parameter.
     double consumerIdlePower {0.0};  //!< Consumer parameter.
+
+    double lastPowerLoad {0.0};
 
     ros::Subscriber joint_state_sub;
     ros::Publisher motor_power_pub;

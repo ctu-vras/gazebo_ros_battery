@@ -39,6 +39,7 @@ public:
     void OnUpdate(const common::UpdateInfo& _info);
 
 protected:
+    void SetEnabled(bool enabled) override;
     double CalculatePower(const geometry_msgs::Twist& _msg);
 
     msgs::Twist powerLoadRates;  //!< Consumer parameter.
@@ -46,6 +47,7 @@ protected:
     double commandDuration {0.1};  //!< For how long a velocity command is valid.
 
     common::Time lastCmdTime;
+    double lastPowerLoad {0.0};
 
     transport::NodePtr gzNode;
 

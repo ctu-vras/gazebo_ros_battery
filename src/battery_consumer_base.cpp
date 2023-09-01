@@ -75,6 +75,9 @@ void BatteryConsumerBase::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->gzConsumerIdPub = this->gzNode->Advertise<gazebo::msgs::Int>("~/consumer_id", 1);
     this->gzPowerLoadPub = this->gzNode->Advertise<gazebo::msgs::Any>("~/power_load", 1);
 
+    this->enabled = _sdf->Get("enabled", true).first;
+    this->gzEnableSub = this->gzNode->Subscribe("~/enable", &BatteryConsumerBase::OnGzEnabledMsg, this, true);
+
     gazebo::msgs::Int consumerIdMsg;
     consumerIdMsg.set_data(static_cast<int32_t>(this->consumerId));
     this->gzConsumerIdPub->Publish(consumerIdMsg);  // Make sure all subscribers are latching
@@ -118,4 +121,29 @@ void BatteryConsumerBase::Publish(const double powerLoad, const gazebo::common::
 void BatteryConsumerBase::Publish(const double powerLoad)
 {
     this->Publish(powerLoad, this->world->SimTime(), {}, 0.0);
+}
+
+void BatteryConsumerBase::Reset()
+{
+    this->enabled = this->sdf->Get("enabled", true).first;
+}
+
+void BatteryConsumerBase::OnGzEnabledMsg(const ConstAnyPtr& msg)
+{
+    if (msg->has_type() && msg->type() == msgs::Any_ValueType_BOOLEAN && msg->has_bool_value())
+        this->SetEnabled(msg->bool_value());
+}
+
+void BatteryConsumerBase::SetEnabled(const bool enabled)
+{
+    if (this->enabled == enabled)
+        return;
+
+    this->enabled = enabled;
+
+    if (!enabled && this->battery != nullptr && this->consumerId != std::numeric_limits<uint32_t>::max())
+    {
+        this->battery->SetPowerLoad(this->consumerId, 0);
+        this->Publish(0);
+    }
 }

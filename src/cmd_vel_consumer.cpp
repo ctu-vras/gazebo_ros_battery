@@ -53,7 +53,8 @@ void CmdVelConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
     this->commandDuration = _sdf->Get<double>("command_duration", this->commandDuration).first;
 
-    this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
+    if (this->enabled)
+        this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
 
     const auto gz_pose_topic = _sdf->Get<std::string>("gz_pose_topic", "").first;
     const auto gz_twist_topic = _sdf->Get<std::string>("gz_twist_topic", "").first;
@@ -123,9 +124,13 @@ void CmdVelConsumerPlugin::OnCmdVelMsg(const geometry_msgs::Twist& _msg)
 {
     this->lastCmdTime = this->world->SimTime();
     const auto cmd_vel_power = CalculatePower(_msg);
-    this->battery->SetPowerLoad(this->consumerId, cmd_vel_power);
+    this->lastPowerLoad = cmd_vel_power;
 
-    this->Publish(cmd_vel_power, this->lastCmdTime);
+    if (this->enabled)
+    {
+        this->battery->SetPowerLoad(this->consumerId, cmd_vel_power);
+        this->Publish(cmd_vel_power, this->lastCmdTime);
+    }
 }
 
 void CmdVelConsumerPlugin::OnUpdate(const common::UpdateInfo&)
@@ -137,7 +142,31 @@ void CmdVelConsumerPlugin::OnUpdate(const common::UpdateInfo&)
 
 void CmdVelConsumerPlugin::Reset()
 {
+    BatteryConsumerBase::Reset();
+
     this->OnCmdVelMsg(geometry_msgs::Twist());
+    if (!this->enabled)
+    {
+        this->battery->SetPowerLoad(this->consumerId, 0);
+        this->Publish(0);
+    }
+
     gzdbg << "Cmd_vel consumer '" << this->consumerName << "' on battery '"
           << this->link->GetName() << "/" << this->battery->Name() << "' was reset.\n";
+}
+
+void CmdVelConsumerPlugin::SetEnabled(bool enabled)
+{
+    if (!this->enabled && enabled)
+    {
+        if (this->battery != nullptr && this->consumerId != std::numeric_limits<uint32_t>::max())
+        {
+            this->battery->SetPowerLoad(this->consumerId, this->lastPowerLoad);
+            this->Publish(this->lastPowerLoad);
+        }
+    }
+    else
+    {
+        BatteryConsumerBase::SetEnabled(enabled);
+    }
 }

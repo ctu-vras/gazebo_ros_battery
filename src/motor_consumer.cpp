@@ -67,9 +67,12 @@ void MotorConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
         }
     }
 
-    this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
-
-    this->Publish(this->consumerIdlePower);
+    if (this->enabled)
+    {
+        this->lastPowerLoad = this->consumerIdlePower;
+        this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
+        this->Publish(this->consumerIdlePower);
+    }
 
     const auto jointStatesTopic = _sdf->Get<std::string>("joint_states_topic", "joint_states").first;
 
@@ -126,17 +129,38 @@ void MotorConsumerPlugin::OnJointStateMsg(const sensor_msgs::JointState::ConstPt
     double motor_power = CalculatePower(_msg);
     if (motor_power == -1)
         return;
-    this->battery->SetPowerLoad(this->consumerId, motor_power);
+    this->lastPowerLoad = motor_power;
 
-    this->Publish(motor_power);
+    if (this->enabled)
+    {
+        this->battery->SetPowerLoad(this->consumerId, motor_power);
+        this->Publish(motor_power);
+    }
 }
 
 void MotorConsumerPlugin::Reset()
 {
-    this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
+    BatteryConsumerBase::Reset();
 
-    this->Publish(this->consumerIdlePower);
+    this->battery->SetPowerLoad(this->consumerId, this->enabled ? this->consumerIdlePower : 0);
+    this->Publish(this->enabled ? this->consumerIdlePower : 0);
 
     gzdbg << "Motor consumer '" << this->consumerName << "' on battery '"
           << this->link->GetName() << "/" << this->battery->Name() << "' was reset.\n";
+}
+
+void MotorConsumerPlugin::SetEnabled(bool enabled)
+{
+    if (!this->enabled && enabled)
+    {
+        if (this->battery != nullptr && this->consumerId != std::numeric_limits<uint32_t>::max())
+        {
+            this->battery->SetPowerLoad(this->consumerId, this->lastPowerLoad);
+            this->Publish(this->lastPowerLoad);
+        }
+    }
+    else
+    {
+        BatteryConsumerBase::SetEnabled(enabled);
+    }
 }

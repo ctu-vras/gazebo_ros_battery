@@ -91,6 +91,8 @@ Each consumer plugin publishes its power load to Gazebo topic `<world>/<model>/<
 
 Each consumer also publishes its consumer ID to Gazebo topic `<world>/<model>/<consumer_name>/consumer_id` (type `gazebo.msgs.Int`). When subscribing, make sure you use a latched subscriber - the value is only published once.
 
+Each consumer subscribes Gazebo topic `<world>/<model>/<consumer_name>/enable` (type `gazebo.msgs.Any` with type `BOOLEAN` and bool value). Messages on this topic can enable and disable the consumer.
+
 ### Configuration
 
 Each consumer plugin has these XML configuration options (and some other specific to the plugin):
@@ -100,6 +102,7 @@ Each consumer plugin has these XML configuration options (and some other specifi
 - `<battery_name>` (string): Name of the battery (has to correspond to the `<battery>` tag in the SDF).
 - `<consumer_name>` (string, defaults to the `name` attribute of the plugin): Name of the consumer (will be used as prefix for the `power_load` topic and others).
 - `<publish_ros_topic>` (bool, defaults to `true`): Whether the `power_load` ROS topic should be published.
+- `<enabled>` (bool, defaults to `true`): Whether the consumer is enabled. Disabled consumers do not consume any energy. The consumer can be "woken up" using a topic.
 
 ### libgazebo_ros_battery_consumer.so
 

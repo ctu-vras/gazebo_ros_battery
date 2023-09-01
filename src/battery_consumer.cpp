@@ -32,9 +32,16 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     BatteryConsumerBase::Load(_model, _sdf);
 
     this->powerLoad = this->initialPowerLoad = _sdf->Get<double>("power_load", 0.0).first;
-    this->battery->SetPowerLoad(this->consumerId, this->powerLoad);
 
-    this->Publish(this->powerLoad);
+    if (this->enabled)
+    {
+        this->battery->SetPowerLoad(this->consumerId, this->powerLoad);
+        this->Publish(this->powerLoad);
+    }
+    else
+    {
+        this->Publish(0);
+    }
 
     if (_sdf->Get("subscribe_ros_topic", true).first)
         this->power_load_sub = this->consumerNode->subscribe(
@@ -50,6 +57,8 @@ void BatteryConsumerPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
 void BatteryConsumerPlugin::Reset()
 {
+    BatteryConsumerBase::Reset();
+
     cras_msgs::Power powerLoadMsg;
     powerLoadMsg.power = this->initialPowerLoad;
     this->OnPowerLoadCmd(powerLoadMsg);
@@ -61,9 +70,12 @@ void BatteryConsumerPlugin::OnPowerLoadCmd(const cras_msgs::Power& _msg)
 {
     const auto load = this->powerLoad;
     this->powerLoad = _msg.power;
-    this->battery->SetPowerLoad(this->consumerId, _msg.power);
 
-    this->Publish(_msg.power);
+    if (this->enabled)
+    {
+        this->battery->SetPowerLoad(this->consumerId, _msg.power);
+        this->Publish(_msg.power);
+    }
 
 #ifdef CONSUMER_DEBUG
     gzdbg << "Power load of consumer has changed from:" << load << ", to:" << req.power_load << "\n";
@@ -77,5 +89,21 @@ void BatteryConsumerPlugin::OnGzPowerLoadCmd(const ConstAnyPtr& _msg)
         cras_msgs::Power rosMsg;
         rosMsg.power = _msg->double_value();
         this->OnPowerLoadCmd(rosMsg);
+    }
+}
+
+void BatteryConsumerPlugin::SetEnabled(const bool enabled)
+{
+    if (!this->enabled && enabled)
+    {
+        if (this->battery != nullptr && this->consumerId != std::numeric_limits<uint32_t>::max())
+        {
+            this->battery->SetPowerLoad(this->consumerId, this->powerLoad);
+            this->Publish(this->powerLoad);
+        }
+    }
+    else
+    {
+        BatteryConsumerBase::SetEnabled(enabled);
     }
 }

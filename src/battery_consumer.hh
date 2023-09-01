@@ -39,6 +39,8 @@ public:
     void OnGzPowerLoadCmd(const ConstAnyPtr& _msg);
 
 protected:
+    void SetEnabled(bool enabled) override;
+
     double initialPowerLoad {0.0};
     double powerLoad {0.0};
 

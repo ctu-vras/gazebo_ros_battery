@@ -54,7 +54,8 @@ void MechanicalEnergyConsumerPlugin::Load(physics::ModelPtr _model, sdf::Element
         return;
     }
 
-    this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
+    if (this->enabled)
+        this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
 
     this->beforePhysicsUpdateConnection = event::Events::ConnectBeforePhysicsUpdate(
         std::bind(&MechanicalEnergyConsumerPlugin::OnUpdate, this, std::placeholders::_1));
@@ -90,7 +91,7 @@ void MechanicalEnergyConsumerPlugin::OnUpdate(const common::UpdateInfo& info)
     const auto totalPower = mechanicalEnergyPower + frictionPower;
 
     const auto load = (std::max)(totalPower, this->consumerIdlePower);
-    this->battery->SetPowerLoad(this->consumerId, load);
+    this->battery->SetPowerLoad(this->consumerId, this->enabled ? load : 0);
 
     this->consumedCharge += load * dt;
 
@@ -98,7 +99,7 @@ void MechanicalEnergyConsumerPlugin::OnUpdate(const common::UpdateInfo& info)
     {
         const auto power = this->consumedCharge / (info.simTime - this->lastPublishTime).Double();
 
-        this->Publish(power, info.simTime, ros::Duration(this->publishInterval));
+        this->Publish(this->enabled ? power : 0, info.simTime, ros::Duration(this->publishInterval));
 
         this->lastPublishTime = info.simTime;
         this->consumedCharge = 0.0;
@@ -107,11 +108,12 @@ void MechanicalEnergyConsumerPlugin::OnUpdate(const common::UpdateInfo& info)
 
 void MechanicalEnergyConsumerPlugin::Reset()
 {
+    BatteryConsumerBase::Reset();
     this->lastEnergy = -1.0;
     this->lastUpdateTime = this->lastPublishTime = this->firstUpdateTime = common::Time::Zero;
     this->consumedCharge = 0.0;
     this->initialized = false;
-    this->battery->SetPowerLoad(this->consumerId, this->consumerIdlePower);
+    this->battery->SetPowerLoad(this->consumerId, this->enabled ? this->consumerIdlePower : 0);
     this->Publish(0.0);
     gzdbg << "Mechanical energy consumer '" << this->consumerName << "' on battery '"
           << this->link->GetName() << "/" << this->battery->Name() << "' was reset.\n";
