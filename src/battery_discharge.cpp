@@ -62,6 +62,12 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->gzNode.reset(new gazebo::transport::Node);
     this->gzNode->Init(_model->GetWorld()->Name());
 
+    this->updatePeriod = 1.0 / _sdf->Get<double>("update_rate", 1 / this->updatePeriod).first;
+
+    const auto gzNs = "~/" + _model->GetName() + "/" + _sdf->GetAttribute("name")->GetAsString() + "/";
+    this->gzChargePowerPub = this->gzNode->Advertise<msgs::Any>(gzNs + "charge_power", 1, 1 / this->updatePeriod);
+    this->gzDischargePowerPub = this->gzNode->Advertise<msgs::Any>(gzNs + "discharge_power", 1, 1 / this->updatePeriod);
+
     this->battery_state = this->rosNode->advertise<sensor_msgs::BatteryState>("battery_state", 1);
     this->charge_state_wh = this->rosNode->advertise<std_msgs::Float64>("charge_level_wh", 1);
 
@@ -88,7 +94,6 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->computeResistance = _sdf->Get<bool>("compute_resistance", false).first;
     this->computeTemperature = _sdf->Get<bool>("compute_temperature", false).first;
 
-    this->updatePeriod = 1.0 / _sdf->Get<double>("update_rate", this->updatePeriod).first;
     this->e0 = _sdf->Get<double>("constant_coef");
     this->e1 = _sdf->Get<double>("linear_coef");
     this->q0 = _sdf->Get<double>("initial_charge");
@@ -221,20 +226,26 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
 {
     double dt = this->world->Physics()->GetMaxStepSize();
 
-    double totalpower = 0.0;
+    double totalPower {0.0};
+    double totalChargePower {0.0};
+    double totalDischargePower {0.0};
     double k = dt / this->tau;
 
     for (auto powerLoad : _battery->PowerLoads())
     {
         if (powerLoad.second >= 0 || this->allowCharging)
-            totalpower += powerLoad.second;
+            totalPower += powerLoad.second;
+        if (powerLoad.second >= 0)
+            totalDischargePower += powerLoad.second;
+        if (this->allowCharging && powerLoad.second < 0)
+            totalChargePower += -powerLoad.second;
     }
 
     // Do not let the voltage drop under the minimum value.
     const auto voltage = (std::max)(_battery->Voltage(), this->e0 + this->e1);
 
     // current = power(Watts)/Voltage
-    const auto iraw = totalpower / voltage;  // Raw battery current in A.
+    const auto iraw = totalPower / voltage;  // Raw battery current in A.
 
     this->ismooth = this->ismooth + k * (iraw - this->ismooth);
 
@@ -264,6 +275,7 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
     {
         et = 0;
         powerLoss = 0;
+        totalDischargePower = std::min(totalDischargePower, totalChargePower);
 
         // TODO figure out how to turn off the robot
 
@@ -278,6 +290,7 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
         this->ismooth = (std::max)(0.0, this->ismooth);
 
         powerLoss = voltageLoss * this->ismooth;
+        totalChargePower = 0;
     }
 
     if (this->computeTemperature)
@@ -327,6 +340,9 @@ double BatteryPlugin::OnUpdateVoltage(const common::BatteryPtr& _battery)
         std_msgs::Float64 charge_msg_wh;
         charge_msg_wh.data = this->q * et;
         this->charge_state_wh.publish(charge_msg_wh);
+
+        this->gzChargePowerPub->Publish(msgs::ConvertAny(totalChargePower));
+        this->gzDischargePowerPub->Publish(msgs::ConvertAny(totalDischargePower));
     }
 
     return et;

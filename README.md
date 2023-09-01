@@ -30,14 +30,17 @@ rosrun gazebo_ros gazebo --verbose $WORKSPACE/src/gazebo_ros_battery/examples/ba
 
 This is the main plugin that represents the discharging process of a battery.
 
-### ROS topics
+### Topics
 
-The plugin reports its state on the following topics:
+The plugin reports its state on the following ROS topics:
 
-```
-battery_state  # discharge plugin
-charge_level_wh  # discharge plugin
-```
+- `<robotNamespace>/battery_state` (`sensor_msgs/BatteryState`): General characteristics of the battery state.
+- `<robotNamespace>/charge_level_wh` (`std_msgs/Float64`): Watt-hours estimate of the battery charge level.
+
+In addition, these Gazebo topics are published:
+
+- `<world>/<model>/<plugin_name>/discharge_power` (`gazebo.msgs.Any` with type `DOUBLE` and a double value): Total actual power discharging the battery (in Watts).
+- `<world>/<model>/<plugin_name>/charge_power` (`gazebo.msgs.Any` with type `DOUBLE` and a double value): Total actual power charging the battery (in Watts).
 
 ### Configuration
 
@@ -47,7 +50,7 @@ The plugin accepts the following configuration XML tags:
 - `<link_name>` (string): Name of the link the battery is attached to.
 - `<battery_name>` (string): Name of the battery (has to correspond to the `<battery>` tag in the SDF).
 - `<allow_charging>` (bool, default `true`): Whether the battery can charge ("consume" negative power).
-- `<allow_charging_gz_topic>` (string, default `~/ROBOT_NAME/allow_charging`, relative to world name): The Gazebo topic to subscribe which allows/forbids charging. The topic is expected to have type `gazebo.msgs.Any` with type BOOLEAN and bool data. Set to empty string to disable subscribing to the topic.
+- `<allow_charging_gz_topic>` (string, default `~/<model>/allow_charging`, relative to world name): The Gazebo topic to subscribe which allows/forbids charging. The topic is expected to have type `gazebo.msgs.Any` with type BOOLEAN and bool data. Set to empty string to disable subscribing to the topic.
 - `<update_rate>` (float, default 1.0 Hz): Rate at which the state topics will be published.
 - `<constant_coeff>` (float): Constant parameter of the open circuit model. This is the highest voltage the battery can have.
 - `<linear_coeff>` (float): The linear parameter of the open circuit model. This value should be negative. `<constant_coeff> + 1 * <linear_coeff>` should give the minimum voltage of the battery.

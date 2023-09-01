@@ -102,6 +102,8 @@ protected:
 
     gazebo::transport::SubscriberPtr gzAmbientTemperatureSub;
     gazebo::transport::SubscriberPtr gzAllowChargingSub;
+    gazebo::transport::PublisherPtr gzChargePowerPub;
+    gazebo::transport::PublisherPtr gzDischargePowerPub;
 
     sensor_msgs::BatteryState batteryMsg;
 };
