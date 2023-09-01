@@ -80,7 +80,7 @@ void BatteryConsumerPlugin::OnPowerLoadCmd(const cras_msgs::Power& _msg)
     }
 
 #ifdef CONSUMER_DEBUG
-    gzdbg << "Power load of consumer has changed from:" << load << ", to:" << req.power_load << "\n";
+    gzdbg << "Power load of consumer has changed from:" << load << ", to:" << this->power_load << "\n";
 #endif
 }
 
