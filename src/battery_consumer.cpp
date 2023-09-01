@@ -11,6 +11,8 @@
 
 #include "battery_consumer.hh"
 
+#include <limits>
+
 #include <gazebo/common/common.hh>
 #include <gazebo/physics/physics.hh>
 #include <sdf/sdf.hh>

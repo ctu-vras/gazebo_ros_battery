@@ -11,6 +11,7 @@
 
 #include "cmd_vel_consumer.hh"
 
+#include <limits>
 #include <memory>
 #include <string>
 

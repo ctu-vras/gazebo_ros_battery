@@ -11,6 +11,7 @@
 
 #include "battery_discharge.hh"
 
+#include <algorithm>
 #include <limits>
 #include <memory>
 #include <string>
