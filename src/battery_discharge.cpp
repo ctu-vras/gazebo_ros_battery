@@ -19,6 +19,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include <gazebo/common/common.hh>
+#include <gazebo/msgs/any.pb.h>
 #include <gazebo/physics/physics.hh>
 #include <sdf/sdf.hh>
 
@@ -78,6 +79,12 @@ void BatteryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     this->link = this->model->GetLink(linkName);
 
     this->allowCharging = _sdf->Get<bool>("allow_charging", this->allowCharging).first;
+    const auto allowChargingGzTopic = _sdf->Get<std::string>(
+        "allow_charging_gz_topic", "~/" + _model->GetName() + "/allow_charging").first;
+    if (!allowChargingGzTopic.empty())
+        this->gzAllowChargingSub = this->gzNode->Subscribe(
+            allowChargingGzTopic, &BatteryPlugin::OnGzAllowChargingMsg, this, true);
+
     this->computeResistance = _sdf->Get<bool>("compute_resistance", false).first;
     this->computeTemperature = _sdf->Get<bool>("compute_temperature", false).first;
 
@@ -334,4 +341,10 @@ void BatteryPlugin::OnGzAmbientTempMsg(const ConstAnyPtr& _msg)
 {
     if (_msg->has_type() && _msg->type() == msgs::Any_ValueType_DOUBLE && _msg->has_double_value())
         this->ambientTemperature = _msg->double_value();
+}
+
+void BatteryPlugin::OnGzAllowChargingMsg(const ConstAnyPtr& _msg)
+{
+    if (_msg->has_type() && _msg->type() == msgs::Any_ValueType_BOOLEAN && _msg->has_bool_value())
+        this->allowCharging = _msg->bool_value();
 }

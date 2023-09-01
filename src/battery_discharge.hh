@@ -48,6 +48,7 @@ private:
 
     void OnRosAmbientTempMsg(const sensor_msgs::Temperature& _msg);
     void OnGzAmbientTempMsg(const ConstAnyPtr& _msg);
+    void OnGzAllowChargingMsg(const ConstAnyPtr& _msg);
 
     void UpdateResistance();
 
@@ -100,6 +101,7 @@ protected:
     ros::Subscriber rosAmbientTemperatureSub;
 
     gazebo::transport::SubscriberPtr gzAmbientTemperatureSub;
+    gazebo::transport::SubscriberPtr gzAllowChargingSub;
 
     sensor_msgs::BatteryState batteryMsg;
 };

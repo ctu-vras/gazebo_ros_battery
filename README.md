@@ -46,7 +46,8 @@ The plugin accepts the following configuration XML tags:
 - `<robotNamespace>` (string, default ''): If nonempty, this value prefixes the ROS topics created by the plugin.
 - `<link_name>` (string): Name of the link the battery is attached to.
 - `<battery_name>` (string): Name of the battery (has to correspond to the `<battery>` tag in the SDF).
-- `<allow_charging>` (bool, defalt `true`): Whether the battery can charge ("consume" negative power).
+- `<allow_charging>` (bool, default `true`): Whether the battery can charge ("consume" negative power).
+- `<allow_charging_gz_topic>` (string, default `~/ROBOT_NAME/allow_charging`, relative to world name): The Gazebo topic to subscribe which allows/forbids charging. The topic is expected to have type `gazebo.msgs.Any` with type BOOLEAN and bool data. Set to empty string to disable subscribing to the topic.
 - `<update_rate>` (float, default 1.0 Hz): Rate at which the state topics will be published.
 - `<constant_coeff>` (float): Constant parameter of the open circuit model. This is the highest voltage the battery can have.
 - `<linear_coeff>` (float): The linear parameter of the open circuit model. This value should be negative. `<constant_coeff> + 1 * <linear_coeff>` should give the minimum voltage of the battery.
